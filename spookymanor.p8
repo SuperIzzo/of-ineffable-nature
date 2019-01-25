@@ -5,40 +5,105 @@ __lua__
 -- team spook
 
 -- ##################
---       Flags
+--       flags
 -- ##################
 flag_collision = 6
 flag_anim_end = 0
-
+flag_sprite_map_bottom_layer = 6
+flag_sprite_map_top_layer = 7
 
 -- ##################
--- Movement Variables
+-- movement variables
 -- ##################
 
--- Base speed for actors to move at
-g_speed_accel = 0.1
+-- base speed for actors to move at
+g_speed_accel = 1
 
--- How many frames between updating character frames
+-- how many frames between updating character frames
 g_anim_update_interval = 5
 
 
 -- ##################
---    Common vars
+--    common vars
 -- ##################
 
--- Global frame count 
+-- global frame count 
 g_frame = 0
 
 -- ##################
---    Camera Vars
+--    camera vars
 -- ##################
 camera_x = 0
 camera_y = 0
 
--- The global pool of actors
+-- the global pool of actors
 actors = {}
 
--- Add an actor to the pool: 
+
+-- gets the world position of the actor, as the actor.x and actor.y
+--  store the actors position in cell coordinates
+function transform_world_to_cell_coord(v)
+    -- convert to world from cell, divide by 8 (due to 1 map cell being 8x8)
+    --  then add 4 (half of the cell size)
+    return (v / 8) + 4
+end
+
+-- player functions
+function pl_move()
+
+    local x = 0
+    local y = 0
+
+    -- left
+    if (btn(0)) x = -1
+
+    -- right
+    if (btn(1)) x = 1
+
+    -- up
+    if (btn(2)) y = -1
+
+    -- down
+    if (btn(3)) y = 1
+
+    add_force_to_actor(pl,x,y)
+
+end
+
+
+-- main entry points
+function _init()
+    pl = add_actor(1,1,5,5,5,5,5)
+    pl.isplayer = true
+end
+
+function _update()
+    foreach(actors, update_actor)
+end
+
+function _draw()
+
+    --clear the screen first
+    cls()
+
+    -- map(0,0,0,0,16,16,flag_sprite_map_bottom_layer)
+
+    foreach(actors, draw_actor)
+
+    -- map(0,0,0,0,16,16,flag_sprite_map_top_layer)
+
+    print("world xy "..pl.x ..","..pl.y,camera_x,110,7)
+    print("map x "..transform_world_to_cell_coord(pl.x)  ..","..transform_world_to_cell_coord(pl.y),camera_x,120,7)
+
+    print("fps "..stat(7) ,camera_x + 100,120,7)
+
+end
+
+-->8
+-- Actor Functions
+
+
+-- add an actor to the pool: 
 -- x pos
 -- y pos
 -- right sprite animation start index
@@ -49,7 +114,7 @@ actors = {}
 function add_actor(x,y,rs,ls,us,ds,is)
     local a = {}
 
-    -- This x and y is world position, in pixels
+    -- this x and y is world position, in pixels
     a.x = x
     a.y = y
 
@@ -59,61 +124,63 @@ function add_actor(x,y,rs,ls,us,ds,is)
     a.ds = ds
     a.is = is
 
-    -- Physics delta speed variables.
+    -- physics delta speed variables.
     a.dx = 0
     a.dy = 0
 
-    -- Facing direction. 0 = right, 1 = down, 2 = left, 3 = up
+    -- facing direction. 0 = right, 1 = down, 2 = left, 3 = up
     a.dir = 0
 
-    -- Is the actor moving
+    -- is the actor moving
     a.moving = false
 
-    -- Current sprite displaying
+    -- current sprite displaying
     a.spr = 0
-    -- Current animation frame timer
-    a.frameTime = 0
+    -- current animation frame timer
+    a.frametime = 0
+
+    a.isplayer = false
 
     add(actors, a)
 
     return a
 end
 
--- Add movement force to the actor:
+-- add movement force to the actor:
 -- the actor to add to
 -- desired x direction - 0 is still, -1 is left, 1 is right
 -- desired y direction - 0 is still, -1 is up, 1 is down
 function add_force_to_actor(a,x,y)
 
-    -- TODO Do we want this here? Need to degrade it somehow rather than straight 0?
+    -- todo do we want this here? need to degrade it somehow rather than straight 0?
     a.dx = 0
     a.dy = 0
 
-    -- Any movement at all? Set the actor moving
-    a.moving = (x+y != 0)
+    -- any movement at all? set the actor moving
+    a.moving = (x != 0 or y != 0)
 
-    -- If not moving, apply the actors idle sprite then EXIT OUT
+    -- if not moving, apply the actors idle sprite then exit out
     if (not a.moving) a.spr = a.is return
 
 
-    -- MOVEMENT PHYSICS BELOW
+    -- movement physics below
 
 
-    -- Apply global acceleration depending on desired x/y
+    -- apply global acceleration depending on desired x/y
     a.dx += g_speed_accel * x
     a.dy += g_speed_accel * y
 
 
-    -- ANIMATION SELECTION BELOW
+    -- animation selection below
 
+    if (true) return
+    -- exit out if we haven't reached the frame update time
+    if (a.frametime % g_anim_update_interval != 0) return
 
-    -- EXIT OUT if we haven't reached the frame update time
-    if (a.frameTime % g_anim_update_interval != 0) return
-
-    -- Keep incrementing the sprite index until we reach a anim end tagged sprite
+    -- keep incrementing the sprite index until we reach a anim end tagged sprite
     if fget(a.spr,flag_anim_end) then
         
-        -- We've reached the end, loop to the default direction sprite
+        -- we've reached the end, loop to the default direction sprite
         if      a.dir == 0 then a.spr = a.rs --right
         elseif  a.dir == 1 then a.spr = a.ds --down
         elseif  a.dir == 2 then a.spr = a.ls --left
@@ -128,47 +195,56 @@ end
 
 function update_actor(a)
 
+    if (a.isplayer) pl_move(a)
 
+
+    a.x += a.dx
+    a.y += a.dy
 
 end
 
 function draw_actor(a)
-
+    spr(a.spr,a.x,a.y)
 end
 
+-->8
+--3
 
--- Player Functions
-function pl_move()
+-->8
+--4
 
-    local x = 0
-    local y = 0
+-->8
+--5
 
-    -- Left
-    if (btn(0)) x = -1
+-->8
+--6
 
-    -- Right
-    if (btn(1)) x = 1
-
-    -- Up
-    if (btn(2)) y = -1
-
-    -- Down
-    if (btn(3)) y = 1
-
-    add_force_to_actor(pl,x,y)
-
-end
-
-
--- Main Entry Points
-function _init()
-    pl = add_actor(20,20)
-end
-
-function _update()
-
-end
-
-function _draw()
-
-end
+__gfx__
+00000000776077600000000055555555bbbbbbb60400004000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000766d766d0004400065555555bbbbbb6b04dddd4000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00700700d555d5550004400055555555b6bbbbbb0444444000999900009999000099990000999900009999000099990000000000000000000000000000000000
+000770007765776500022000555511554bb3bbbb0400004009aaaaa009aaaaa009aaaaa009aaaaa009aaaaa009aaaaa000000000000000000000000000000000
+00077000766576654442224455555115bbbbbbbb0400004099a99a9a99a99a9a99a99a9aaaa99a9aaaa99a9aaaa99a9a00000000000000000000000000000000
+00700700555d555d2222255255511115bbbbbbbb04dddd409aff99aa9aff99aa9aff99aa9a9aa9a99a9aa9a99a9aa9a900000000000000000000000000000000
+00000000555555550002200011111111bbbb6bbb04444440971ff19a971ff19a971ff19a9a9aa9a99a9aa9a99a9aa9a900000000000000000000000000000000
+00000000555555550002200011111151bbbbbbb604000040a7cffc7aa7cffc7aa7cffc7aaa9aa9a9aa9aa9a9aa9aa9a900000000000000000000000000000000
+000000000000000000000000bbbbbbbbbbbbbbb6000000000ffffff00ffffff00ffffff00a9aaaa00a9aa9a00a9aa9a000000000000000000000000000000000
+000000000000000000000000bbbbbbbbb6bbbbbb0000000009ffff9009ffff9009ffff90099a9a9009a9a990099a9a9000000000000000000000000000000000
+000000000000000000000000b6bb3bbbbbbbbbbb000000008ee888e80ee88ee88ee88ee08e9a99980e9999e88e9999e000000000000000000000000000000000
+000000000000000000000000bb6bbbbbbbbbbbbb0000000088eeee88888eee8888eee88888e99e88888e99888899e88800000000000000000000000000000000
+000000000000000000000000bbbbbbbbbbbbbbbb00000000888ee8888888e8ffff8e8888888998888888e8ffff8e888800000000000000000000000000000000
+000000000000000000000000bbbbbbbbbb3bb6bb00000000ff8888fff88888ffff88888fff8888fff88888ffff88888f00000000000000000000000000000000
+000000000000000000000000bbbbb6bbbbbbbbbb000000000dd88dd00dd88dd00dd88dd00dd88dd00dd88dd00dd88dd000000000000000000000000000000000
+000000000000000000000000bbbbbbbbbbbbbbbb00000000000000000dd0000000000dd0000000000dd0000000000dd000000000000000000000000000000000
+__map__
+0000000000000000000013140414131400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000003040304030400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000010101010101000013141314131400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000003040304030400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000013141314131400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0002020202020202020202020200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000005000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000005000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+__sfx__
+0001000025650246501e650226501e65022650206501d6501d6501c6501b6501965019650276502565019650236501a6501a6501e6502c6501f6501f650296502365026650256502665017650236502165018650
+01100000156500e6502165012650116501a6501f65015650276502365013650276502165022650206501a650266501e65029650246501f6501b6501f65025650216501b650246502665026650246502465025650
