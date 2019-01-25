@@ -73,7 +73,7 @@ end
 
 -- main entry points
 function _init()
-    pl = add_actor(1,1,5,5,5,5,5)
+    pl = add_actor(1,1,0)
     pl.isplayer = true
 end
 
@@ -99,43 +99,92 @@ function _draw()
 
 end
 
--->8
 -- Actor Functions
 
+function setup_pl_anims(a)
+    -- Right, down, left, and up consist of 4 frames
+    a.anim_sz = { 4, 4, 4, 4 }
+
+    for i=1, 8 do
+        a.anim[i] = {}
+        for y=1, 4 do
+            a.anim[i][y] = 0
+        end
+    end
+    
+    -- 1 = Upper Right
+    -- 2 = Lower Right
+    -- 3 = Upper Down
+    -- 4 = Lower Down
+    -- 5 = Upper Left
+    -- 6 = Lower Left
+    -- 7 = Upper Top
+    -- 8 = Lower Top
+
+    -- Upper Frames - Since they're all the same right now
+    for i=1,4 do
+        a.anim[1][i] = 38   --Right
+        a.anim[3][i] = 6   --Down
+        a.anim[5][i] = 38   --Left
+        a.anim[7][i] = 9   --Up
+    end
+
+    -- Right and Left Lower Frames
+    a.anim[2][1] = 54
+    a.anim[2][2] = 55
+    a.anim[2][3] = 54
+    a.anim[2][4] = 56
+    
+    -- Left is the same as right
+    for i=1,4 do
+        a.anim[6][i] = a.anim[2][i]
+    end
+
+    -- Down Lower Frames
+    a.anim[4][1] = 22
+    a.anim[4][2] = 23
+    a.anim[4][3] = 22
+    a.anim[4][4] = 24
+
+    -- Up Lower Frames
+    a.anim[8][1] = 25
+    a.anim[8][2] = 26
+    a.anim[8][3] = 25
+    a.anim[8][4] = 27
+end
 
 -- add an actor to the pool: 
 -- x pos
 -- y pos
--- right sprite animation start index
--- left sprite animation start index
--- up sprite animation start index
--- down sprite animation start index
--- idle sprite animation
-function add_actor(x,y,rs,ls,us,ds,is)
+-- actor type: 0 = player
+function add_actor(x,y,at)
     local a = {}
 
     -- this x and y is world position, in pixels
     a.x = x
     a.y = y
 
-    a.rs = rs
-    a.ls = ls
-    a.us = us
-    a.ds = ds
-    a.is = is
+    a.anim = { }
+
+    -- If this is a player, setup the player anims
+    if at == 0 then
+       setup_pl_anims(a) 
+        
+
+    end
 
     -- physics delta speed variables.
     a.dx = 0
     a.dy = 0
 
-    -- facing direction. 0 = right, 1 = down, 2 = left, 3 = up
-    a.dir = 0
+    -- facing direction. 1 = right, 2 = down, 3 = left, 4 = up
+    a.dir = 1
 
     -- is the actor moving
     a.moving = false
 
-    -- current sprite displaying
-    a.spr = 0
+    -- current frame displaying; for upper and lower body
+    a.frame = 1
     -- current animation frame timer
     a.frametime = 0
 
@@ -159,8 +208,14 @@ function add_force_to_actor(a,x,y)
     -- any movement at all? set the actor moving
     a.moving = (x != 0 or y != 0)
 
-    -- if not moving, apply the actors idle sprite then exit out
-    if (not a.moving) a.spr = a.is return
+    -- if not moving, set frame as 1 then exit out
+    if (not a.moving) a.frame = 1 return
+
+    if x > 0 then       a.dir = 1 --going right
+    elseif x < 0 then   a.dir = 3 --going left
+    elseif y > 0 then   a.dir = 2 --going down
+    else                a.dir = 4 --going up
+    end
 
 
     -- movement physics below
@@ -173,23 +228,19 @@ function add_force_to_actor(a,x,y)
 
     -- animation selection below
 
-    if (true) return
+    a.frametime+=1
+    
     -- exit out if we haven't reached the frame update time
-    if (a.frametime % g_anim_update_interval != 0) return
+    if (a.frametime % g_anim_update_interval != 0)  return
 
-    -- keep incrementing the sprite index until we reach a anim end tagged sprite
-    if fget(a.spr,flag_anim_end) then
-        
-        -- we've reached the end, loop to the default direction sprite
-        if      a.dir == 0 then a.spr = a.rs --right
-        elseif  a.dir == 1 then a.spr = a.ds --down
-        elseif  a.dir == 2 then a.spr = a.ls --left
-        else                    a.spr = a.us --up
-        end
-
-    else 
-        a.spr += 1
+    -- If we've reached the end, reloop
+    if a.frame == a.anim_sz[a.dir] then
+        a.frame = 1
+    else
+        a.frame += 1
     end
+
+    a.frametime = 0
 
 end
 
@@ -204,20 +255,16 @@ function update_actor(a)
 end
 
 function draw_actor(a)
-    spr(a.spr,a.x,a.y)
+
+    local dir = a.dir*2
+
+    -- Upper
+    spr(a.anim[dir-1][a.frame],     a.x,    a.y - 8,    1.0,    1.0, a.dir == 3)
+    
+    -- Lower
+    spr(a.anim[dir][a.frame],       a.x,    a.y,        1.0,    1.0, a.dir == 3)
+
 end
-
--->8
---3
-
--->8
---4
-
--->8
---5
-
--->8
---6
 
 __gfx__
 00000000776077600000000055555555bbbbbbb60400004000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -234,8 +281,23 @@ __gfx__
 000000000000000000000000bb6bbbbbbbbbbbbb0000000088eeee88888eee8888eee88888e99e88888e99888899e88800000000000000000000000000000000
 000000000000000000000000bbbbbbbbbbbbbbbb00000000888ee8888888e8ffff8e8888888998888888e8ffff8e888800000000000000000000000000000000
 000000000000000000000000bbbbbbbbbb3bb6bb00000000ff8888fff88888ffff88888fff8888fff88888ffff88888f00000000000000000000000000000000
-000000000000000000000000bbbbb6bbbbbbbbbb000000000dd88dd00dd88dd00dd88dd00dd88dd00dd88dd00dd88dd000000000000000000000000000000000
+000000000000000000000000bbbbb6bbbbbbbbbb000000000dd88dd00dd8811001188dd00dd88dd00dd8811001188dd000000000000000000000000000000000
 000000000000000000000000bbbbbbbbbbbbbbbb00000000000000000dd0000000000dd0000000000dd0000000000dd000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000009909990099099900990999000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000099a9aa9999a9aa9999a9aa9900000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000009aa9a9a99aa9a9a99aa9a9a900000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000009aaaa9f99aaaa9f99aaaa9f900000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000009a9a91f09a9a91f09a9a91f000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000009a997cf09a997cf09a997cf000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000099f9fff099f9fff099f9fff000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000099efff0099efff0099efff0000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000099eeeee0998ee8e09aeeee0000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000090e88e009088ee8fa0e88ee000000000000000000000000000000000000000000000000000000000
+000000000000000000000000000000000000000000000000008ffe0000ff8e8f0088ffe000000000000000000000000000000000000000000000000000000000
+000000000000000000000000000000000000000000000000008ff80001ff88dd00d8ff1000000000000000000000000000000000000000000000000000000000
+000000000000000000000000000000000000000000000000008ddd1000110ddd00dd011000000000000000000000000000000000000000000000000000000000
 __map__
 0000000000000000000013140414131400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000003040304030400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
