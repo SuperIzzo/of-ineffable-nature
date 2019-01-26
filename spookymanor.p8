@@ -378,7 +378,7 @@ end
 -- adds a map area that'll reveal upon the player entering the area
 -- minx,miny,maxx,maxy = area the player must be in to show this area.
 -- cx,cy = map cell start for this area.
--- cex,cey = end x and y to draw to
+-- cex,cey = end cell x and y to draw to
 function add_map_area(minx,miny,maxx,maxy,cx,cy,cex,cey)
     local a = {}
     a.minx = minx
@@ -529,12 +529,14 @@ function text_update()
 
         if text_displayline >= #text_queue[1] then
             
+            -- Wait for button input before we unpause the game
             g_text_waiting_on_input = (not btn(4))
 
             if g_text_waiting_on_input then
                 return
             end
 
+            --Then del all the queued text and reset
             for i=1, #text_queue[1] do
                 del(text_queue, text_queue[1][i])
             end
@@ -553,6 +555,7 @@ function text_update()
         end
     end
 
+    -- Every two frames display the next char
     if (text_displaytimer < 1) text_displaytimer += 1 return
     text_displaytimer = 0
 
@@ -612,9 +615,7 @@ end
 function text_draw()
 
     if (#text_queue == 0) return
-
     
-
     rectfill(camera_x + 5, camera_y + 85, camera_x + 122, camera_y + 122, 1)
     rect(camera_x + 4, camera_y + 84, camera_x + 123, camera_y + 123, 0)
     rect(camera_x + 5, camera_y + 85, camera_x + 122, camera_y + 122, 2)
@@ -624,10 +625,8 @@ function text_draw()
     for i=1, #text_queue[1] do
         if i < text_displayline then
             print(text_queue[1][i], camera_x + 10, (camera_y + 110) - (8 * (text_displayline-i)), 7)
-            --print(text_queue[1][i], 5, 5 - (10 * i), 7)
         elseif i == text_displayline then
             print(sub(text_queue[1][i], 1, text_displaychar), camera_x + 10, (camera_y + 110), 7)
-          -- print(sub(text_queue[1][i], 1, text_displaychar), 5, 5, 7)
         end
 
     end
