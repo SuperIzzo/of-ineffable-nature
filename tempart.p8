@@ -62,19 +62,42 @@ function _update()
     g_frame += 1
 end
 
-function _draw()
+dark0_pal 		= {0,0,0,1,   2,1,1,13,   2,2,4,3,   1,1,1,14}
+dark1_pal 		= {0,0,0,1,   2,1,1,5,      2,2,5,1,   1,1,1,5}
+dark2_pal 		= {0,0,0,0,   2,0,1,5,      2,2,5,1,   1,1,2,5}
+light2_pal 		= { 5, 6,14, 7,    7, 7, 7, 7,    14, 7, 7, 7,   7, 6, 7,7}
 
+
+function set_pal(p)
+	for i =0,15 do
+		local c = (p and p[i+1]) or i
+		pal(i,c,1)
+	end
+end
+
+lightning_pals = {dark2_pal, dark1_pal, dark0_pal, nil, light2_pal }
+lightning = 1
+
+function _draw()
     --clear the screen first
     cls()
     camera(camera_x, camera_y)
 
-    -- loop through areas, if they can show, draw the map and its entities
+	if lightning > 1 and rnd(3) < 1.0  then lightning = lightning-1 end
+	
+	if  rnd(50.0)  < 1 then	
+		lightning = #lightning_pals
+	end
+	
+	set_pal(lightning_pals[lightning] )
+	
+    -- loop through areas, if they can show, draw the map and its entities	
     for m in all(areas) do
         if m.show then 
             map(m.cx,m.cy, m.cx*8,m.cy*8, m.cex - m.cx,m.cey - m.cy)
             foreach(m.entities, draw_ent)
         end
-    end
+    end	
 
     -- map(0,0,0,0,16,16,flag_sprite_map_bottom_layer)
 
@@ -92,9 +115,6 @@ function _draw()
     --print("d: "..dist(pl.x,pl.y,areas[4].entities[1].x,areas[4].entities[1].y), camera_x,camera_y+120,7)
     
    print("fps "..stat(7) ,camera_x + 100,camera_y,7)
-
-   
-
 end
 
 -- ########################################################################
@@ -132,6 +152,9 @@ end
 function setup_pl_anims(a)
     -- right, down, left, and up consist of 4 frames
     a.anim_sz = { 4, 4, 4, 4 }
+		
+    -- the actor transparent colour
+    a.tcol = 0
 
     for i=1, 8 do
         a.anim[i] = {}
@@ -152,34 +175,92 @@ function setup_pl_anims(a)
 
     -- upper frames - since they're all the same right now
     for i=1,4 do
-        a.anim[1][i] = 40   --right
-        a.anim[3][i] = 8    --down
-        a.anim[5][i] = 40   --left
-        a.anim[7][i] = 11   --up
+        a.anim[1][i] = 39   --right
+        a.anim[3][i] = 7    	--down
+        a.anim[5][i] = -39   --left
+        a.anim[7][i] = 9   	--up
     end
 
     -- right and left lower frames
-    a.anim[2][1] = 56
-    a.anim[2][2] = 57
-    a.anim[2][3] = 56
-    a.anim[2][4] = 58
+    a.anim[2][1] = 55
+    a.anim[2][2] = 56
+    a.anim[2][3] = 55
+    a.anim[2][4] = 57
     
     -- left is the same as right
     for i=1,4 do
-        a.anim[6][i] = a.anim[2][i]
+        a.anim[6][i] = -a.anim[2][i]
     end
 
     -- down lower frames
-    a.anim[4][1] = 24
-    a.anim[4][2] = 25
-    a.anim[4][3] = 24
-    a.anim[4][4] = 26
+    a.anim[4][1] = 23
+    a.anim[4][2] = 24
+    a.anim[4][3] = 23
+    a.anim[4][4] = -24
 
     -- up lower frames
-    a.anim[8][1] = 27
-    a.anim[8][2] = 28
-    a.anim[8][3] = 27
-    a.anim[8][4] = 29
+    a.anim[8][1] = 25
+    a.anim[8][2] = 26
+    a.anim[8][3] = 25
+    a.anim[8][4] = -26
+end
+
+
+function setup_mon_anims(a)
+    -- right, down, left, and up consist of 4 frames
+    a.anim_sz = { 4, 4, 4, 4 }
+	
+	-- the actor transparent colour
+    a.tcol = 14
+	
+    for i=1, 8 do
+        a.anim[i] = {}
+        for y=1, 4 do
+            a.anim[i][y] = 0
+        end
+    end
+    
+    -- walk loop frames alternate so save disk space: frame 1, frame 2, frame 1, frame 3
+    -- 1 = upper right
+    -- 2 = lower right
+    -- 3 = upper down
+    -- 4 = lower down
+    -- 5 = upper left
+    -- 6 = lower left
+    -- 7 = upper top
+    -- 8 = lower top
+
+    -- upper frames - since they're all the same right now
+    for i=1,4 do
+        a.anim[1][i] = 33   --right
+        a.anim[3][i] = 1   	--down
+        a.anim[5][i] = 36   --left
+        a.anim[7][i] = 4   	--up
+    end
+
+    -- right lower frames
+    a.anim[2][1] = 49
+    a.anim[2][2] = 50
+    a.anim[2][3] = 49
+    a.anim[2][4] = 51
+    
+     -- left lower frames
+    a.anim[6][1] = 52
+    a.anim[6][2] = 53
+    a.anim[6][3] = 52
+    a.anim[6][4] = 54
+
+    -- down lower frames
+    a.anim[4][1] = 17
+    a.anim[4][2] = 18
+    a.anim[4][3] = 17
+    a.anim[4][4] = 19
+
+    -- up lower frames
+    a.anim[8][1] = 20
+    a.anim[8][2] = 21
+    a.anim[8][3] = 20
+    a.anim[8][4] = 22
 end
 
 -- add an actor to the pool: 
@@ -221,9 +302,6 @@ function add_actor(x,y,at)
     a.frametime = 0
 
     a.isplayer = false
-
-    -- the actor transparent colour
-    a.tcol = 0
 
     add(actors, a)
 
@@ -302,10 +380,16 @@ function draw_actor(a)
     if (a.tcol != 0) palt(a.tcol, true)
 
     -- upper
-    spr(a.anim[dir-1][a.frame],     a.x,    a.y - 8,    1.0,    1.0, a.dir == 3)
+	local frame = a.anim[dir-1][a.frame]
+	local flip = false
+	if frame < 0 then frame = -frame; flip = true end
+    spr(frame,     a.x,    a.y - 8,    1.0,    1.0, flip)
     
     -- lower
-    spr(a.anim[dir][a.frame],       a.x,    a.y,        1.0,    1.0, a.dir == 3)
+	frame = a.anim[dir][a.frame]
+	flip = false
+	if frame < 0 then frame = -frame; flip = true end
+    spr(frame,       a.x,    a.y,        1.0,    1.0, flip)
 
     -- then reenable it to draw
     if (a.tcol != 0) palt(a.tcol, false)
@@ -357,7 +441,7 @@ function update_ent(e)
     if e.type == 1 then
         if dist(pl.x,pl.y,e.x,e.y) < 7.5 then 
             e.triggered = true
-            text_add("collected a key! it must be my lucky day, better put on a lottery ticket then i think!")
+            text_add("collected a key! it must be my lucky day, better put on a lottery ticket then I think!")
             -- todo sound effect, maybe ptfx?
         end
     
@@ -378,7 +462,7 @@ end
 -- adds a map area that'll reveal upon the player entering the area
 -- minx,miny,maxx,maxy = area the player must be in to show this area.
 -- cx,cy = map cell start for this area.
--- cex,cey = end x and y to draw to
+-- cex,cey = end cell x and y to draw to
 function add_map_area(minx,miny,maxx,maxy,cx,cy,cex,cey)
     local a = {}
     a.minx = minx
@@ -529,12 +613,14 @@ function text_update()
 
         if text_displayline >= #text_queue[1] then
             
+            -- Wait for button input before we unpause the game
             g_text_waiting_on_input = (not btn(4))
 
             if g_text_waiting_on_input then
                 return
             end
 
+            --Then del all the queued text and reset
             for i=1, #text_queue[1] do
                 del(text_queue, text_queue[1][i])
             end
@@ -553,6 +639,7 @@ function text_update()
         end
     end
 
+    -- Every two frames display the next char
     if (text_displaytimer < 1) text_displaytimer += 1 return
     text_displaytimer = 0
 
@@ -612,9 +699,7 @@ end
 function text_draw()
 
     if (#text_queue == 0) return
-
     
-
     rectfill(camera_x + 5, camera_y + 85, camera_x + 122, camera_y + 122, 1)
     rect(camera_x + 4, camera_y + 84, camera_x + 123, camera_y + 123, 0)
     rect(camera_x + 5, camera_y + 85, camera_x + 122, camera_y + 122, 2)
@@ -624,10 +709,8 @@ function text_draw()
     for i=1, #text_queue[1] do
         if i < text_displayline then
             print(text_queue[1][i], camera_x + 10, (camera_y + 110) - (8 * (text_displayline-i)), 7)
-            --print(text_queue[1][i], 5, 5 - (10 * i), 7)
         elseif i == text_displayline then
             print(sub(text_queue[1][i], 1, text_displaychar), camera_x + 10, (camera_y + 110), 7)
-          -- print(sub(text_queue[1][i], 1, text_displaychar), 5, 5, 7)
         end
 
     end
@@ -637,7 +720,7 @@ function text_draw()
     if g_text_waiting_on_input then
         text_displaytimer += 1
 
-        -- blinking text prompt display
+        -- Blinking text prompt display
         if(text_displaytimer >= 0 and text_displaytimer < 30) pal(6, 5)
         spr(123, camera_x + 110,camera_y + 112)
         pal()
