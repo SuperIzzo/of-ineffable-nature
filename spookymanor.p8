@@ -56,12 +56,12 @@ function _update()
             text_update()
         end
 
-        local cx = (pl.x / 8)
-        local cy = (pl.y / 8) + 0.75
+        local cx = flr((pl.x / 8))
+        local cy = flr((pl.y / 8) + 0.75)
 
         -- loop through areas and show them if need be
         for m in all(areas) do
-            if cx >= m.minx and cx < m.maxx and cy >= m.miny and cy < m.maxy then
+            if cx >= m.minx and cx <= m.maxx and cy >= m.miny and cy <= m.maxy then
                 if(not m.entered) entered_area(m)
 
                 foreach(m.entities, update_ent)
@@ -101,11 +101,12 @@ function _draw()
         -- loop through areas, if they can show, draw the map and its entities
         for m in all(areas) do
             if m.show then 
-                --map(m.cx,m.cy, m.cx*8,m.cy*8, m.cex - m.cx,m.cey - m.cy)
+                draw_map_area(m)
                 foreach(m.entities, draw_ent)
+                foreach(m.links, draw_linked_maps)
             end
         end
-        map(0,0,0,0,256,256) -- todo remove this!!!
+        
         -- map(0,0,0,0,16,16,flag_sprite_map_bottom_layer)
 
         foreach(actors, draw_actor)
@@ -118,10 +119,10 @@ function _draw()
     end
 
 
-    --local cx = (pl.x / 8)
-   -- local cy = (pl.y / 8) + 0.75
-    --print("world x "..pl.x  ..","..pl.y,camera_x,camera_y+100,7)
-    --print("map x "..cx  ..","..cy,camera_x,camera_y+110,7)
+    local cx = (pl.x / 8)
+    local cy = (pl.y / 8) + 0.75
+    print("world x "..pl.x  ..","..pl.y,camera_x,camera_y+100,7)
+    print("map x "..cx  ..","..cy,camera_x,camera_y+110,7)
     --print("cxy "..pl.cx ..","..pl.cy.." mxy "..pl.mx..","..pl.my,camera_x,120,7)
     --print("d: "..dist(pl.x,pl.y,areas[4].entities[1].x,areas[4].entities[1].y), camera_x,camera_y+120,7)
     
@@ -508,7 +509,7 @@ function add_map_area(minx,miny,maxx,maxy,cx,cy,cex,cey)
 end
 
 function add_map_link(s, t)
-    add(s.link, t)
+    add(s.links, t)
 end
 
 function entered_area(a)
@@ -523,21 +524,40 @@ function left_area(a)
 
 end
 
+function draw_map_area(m)
+    map(m.cx,m.cy, m.cx*8,m.cy*8, m.cex - m.cx,m.cey - m.cy)
+end
+
+function draw_linked_maps(m)
+    draw_map_area(m)
+end
+
 function add_game_maps()
 
     -- First Floor
 
     --                                      Player XY       Cell XY
     local ff_main_bedroom = add_map_area(   0,27,13,36,     0,27,13,36)
-    local corridor = add_map_area(          0,37,46,43,     0,37,46,43)
+    local ff_corridor = add_map_area(       0,37,46,43,     0,37,46,43)
+    local ff_bathroom = add_map_area(       6,44,16,51,     6,44,16,51)
+    local ff_library = add_map_area(        14,30,38,36,    14,30,38,36)
+    local ff_storage = add_map_area(        39,30,46,36,    39,30,46,36)
+    local ff_spare_bedroom = add_map_area(  38,44,46,50,    38,44,46,50)
+    local ff_stairs = add_map_area(         24,44,33,46,    24,44,33,46)
 
-
-
-
-
-
-
-
+    add_map_link(ff_main_bedroom, ff_corridor)
+    add_map_link(ff_bathroom, ff_corridor)
+    add_map_link(ff_library, ff_corridor)
+    add_map_link(ff_storage, ff_corridor)
+    add_map_link(ff_spare_bedroom, ff_corridor)
+    add_map_link(ff_stairs, ff_corridor)
+    
+    add_map_link(ff_corridor, ff_bathroom)
+    add_map_link(ff_corridor, ff_library)
+    add_map_link(ff_corridor, ff_storage)
+    add_map_link(ff_corridor, ff_spare_bedroom)
+    add_map_link(ff_corridor, ff_stairs)
+    add_map_link(ff_corridor, ff_main_bedroom)
 
     -- initialise areas that'll show up when you near them
     --local firstmap = add_map_area(0,0, 18,18, 0,0, 15,15)
