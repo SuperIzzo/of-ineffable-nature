@@ -18,16 +18,89 @@ g_anim_update_interval = 5
 -- global frame count 
 g_frame = 0
 
+g_drawing_text = false
+g_text_waiting_on_input = false
+
 camera_x = 0
 camera_y = 0
 
--- the global pool of actors
-actors = {}     --Dynamic
-
-
+-- the global pools
+actors = {}
 areas = {}
+text_queue = {}
 
--- player functions
+-- main entry points
+function _init()
+    --pl = add_actor(188,54,0)
+    pl = add_actor(25,25,0)
+    pl.isplayer = true
+
+    add_game_maps()
+end
+
+function _update()
+    if not g_drawing_text then 
+        foreach(actors, update_actor)
+    else
+        text_update()
+    end
+
+    local cx = (pl.x / 8)
+    local cy = (pl.y / 8) + 0.75
+
+    -- loop through areas and show them if need be
+    for m in all(areas) do
+        if cx >= m.minx and cx < m.maxx and cy >= m.miny and cy < m.maxy then
+            if(not m.entered) entered_area(m)
+
+            foreach(m.entities, update_ent)
+        else
+            if(m.entered) left_area(m)
+        end
+    end
+
+    g_frame += 1
+end
+
+function _draw()
+
+    --clear the screen first
+    cls()
+    camera(camera_x, camera_y)
+
+    -- loop through areas, if they can show, draw the map and its entities
+    for m in all(areas) do
+        if m.show then 
+            map(m.cx,m.cy, m.cx*8,m.cy*8, m.cex - m.cx,m.cey - m.cy)
+            foreach(m.entities, draw_ent)
+        end
+    end
+
+    -- map(0,0,0,0,16,16,flag_sprite_map_bottom_layer)
+
+    foreach(actors, draw_actor)
+
+    -- map(0,0,0,0,16,16,flag_sprite_map_top_layer)
+    
+    if (g_drawing_text) text_draw()
+    
+    local cx = (pl.x / 8)
+    local cy = (pl.y / 8) + 0.75
+    --print("world x "..pl.x  ..","..pl.y,camera_x,camera_y+100,7)
+    --print("map x "..cx  ..","..cy,camera_x,camera_y+110,7)
+    --print("cxy "..pl.cx ..","..pl.cy.." mxy "..pl.mx..","..pl.my,camera_x,120,7)
+    --print("d: "..dist(pl.x,pl.y,areas[4].entities[1].x,areas[4].entities[1].y), camera_x,camera_y+120,7)
+    
+   print("fps "..stat(7) ,camera_x + 100,camera_y,7)
+
+   
+
+end
+
+-- ########################################################################
+--                          player functions     start
+-- ########################################################################
+
 function pl_move()
 
     local x = 0
@@ -49,117 +122,6 @@ function pl_move()
 
     camera_x = pl.x - 64
     camera_y = pl.y - 64
-
-end
-
--- Adds a map area that'll reveal upon the player entering the area
--- minx,miny,maxx,maxy = area the player must be in to show this area.
--- cx,cy = map cell start for this area.
--- cex,cey = end x and y to draw to
-function add_map_area(name,minx,miny,maxx,maxy,cx,cy,cex,cey)
-    local a = {}
-    a.name = name
-    a.minx = minx
-    a.miny = miny
-    a.maxx = maxx
-    a.maxy = maxy
-    a.cx = cx
-    a.cy = cy
-    a.cex = cex + 1
-    a.cey = cey + 1
-    
-    a.entered = false
-    a.show = false
-
-    a.entities = {}
-
-    add(areas,a)
-
-    return a
-end
-
-function entered_area(a)
-    a.entered = true
-    a.show = true
-
-    log("Entered a new area! "..a.name)
-end
-
-function left_area(a)
-    a.entered = false
-    a.show = false
-
-    log("Left an area "..a.name)
-end
-
-function add_game_maps()
-    -- Initialise areas that'll show up when you near them
-    local firstMap = add_map_area("firstMap",0,0, 18,18, 0,0, 15,15)
-
-    -- Bottom right, and keeping a portion when going top right
-    local secondMap = add_map_area("secondMapa",12,09, 32,32, 10,9, 32,29)
-    add_map_area("secondMapb",20,02, 29,09, 16,9, 32,16)
-
-    -- Top right
-    local thirdMap = add_map_area("thirdMap",20,02, 29,09, 20,02, 28,09)
-    add_ent(3,2,16,thirdMap)
-    
-end
-
--- main entry points
-function _init()
-    pl = add_actor(20,15,0)
-    pl.isplayer = true
-
-    add_game_maps()
-end
-
-function _update()
-    foreach(actors, update_actor)
-
-    local cx = (pl.x / 8)
-    local cy = (pl.y / 8) + 0.75
-
-    -- Loop through areas and show them if need be
-    for m in all(areas) do
-        if cx >= m.minx and cx < m.maxx and cy >= m.miny and cy < m.maxy then
-            if(not m.entered) entered_area(m)
-        else
-            if(m.entered) left_area(m)
-        end
-    end
-
-    g_frame += 1
-end
-
-function _draw()
-
-    --clear the screen first
-    cls()
-    camera(camera_x, camera_y)
-
-    -- Loop through areas, if they can show, draw the map and its entities
-    for m in all(areas) do
-        if m.show then 
-            map(m.cx,m.cy, m.cx*8,m.cy*8, m.cex - m.cx,m.cey - m.cy)
-            foreach(m.entities, draw_ent)
-        end
-    end
-
-    -- map(0,0,0,0,16,16,flag_sprite_map_bottom_layer)
-
-    foreach(actors, draw_actor)
-
-    -- map(0,0,0,0,16,16,flag_sprite_map_top_layer)
-
-    
-    local cx = (pl.x / 8)
-    local cy = (pl.y / 8) + 0.75
-    print("world x "..pl.x  ..","..pl.y,camera_x,camera_y+100,7)
-    print("map x "..cx  ..","..cy,camera_x,camera_y+110,7)
-    --print("cxy "..pl.cx ..","..pl.cy.." mxy "..pl.mx..","..pl.my,camera_x,120,7)
-
-    print("fps "..stat(7) ,camera_x + 100,camera_y+120,7)
 
 end
 
@@ -214,10 +176,10 @@ function setup_pl_anims(a)
     a.anim[4][4] = 26
 
     -- up lower frames
-    a.anim[8][1] = 25
-    a.anim[8][2] = 26
-    a.anim[8][3] = 25
-    a.anim[8][4] = 27
+    a.anim[8][1] = 27
+    a.anim[8][2] = 28
+    a.anim[8][3] = 27
+    a.anim[8][4] = 29
 end
 
 -- add an actor to the pool: 
@@ -354,17 +316,122 @@ end
 --                          entity functions     start
 -- ########################################################################
 
+function add_ent_blocker(e, b)
+    e.bl = b
+end
+
+function add_ent_alt_sprite(e,s)
+    e.spralt = s
+end
+
 function add_ent(x,y,s,m)
     local e = {}
     e.x = (m.cx + x) * 8
     e.y = (m.cy + y) * 8
     e.spr = s
 
+    -- 0 = none, 1 = collectable, 2 = openable door
+    e.type = 0
+
+    e.triggered = false
+
     add(m.entities,e)
+
+    return e
 end
 
 function draw_ent(e)
+    -- once we've "collected" the key, don't want to draw it
+    if e.type == 1 then
+        if (e.triggered) return
+    end
+
     spr(e.spr,e.x,e.y)
+end
+
+function update_ent(e)
+
+    if (e.triggered) return
+
+    -- collectable - static and drawing until player picks it up
+    if e.type == 1 then
+        if dist(pl.x,pl.y,e.x,e.y) < 7.5 then 
+            e.triggered = true
+            text_add("collected a key! it must be my lucky day, better put on a lottery ticket then I think!")
+            -- todo sound effect, maybe ptfx?
+        end
+    
+    -- openable door - locked and has collision while blocker is active
+    elseif e.type == 2 then
+        if e.bl.triggered then
+            e.triggered = true
+            e.spr = e.spralt
+        end
+    end
+end
+
+-- ########################################################################
+--                          area mapping functions     start
+-- ########################################################################
+
+
+-- adds a map area that'll reveal upon the player entering the area
+-- minx,miny,maxx,maxy = area the player must be in to show this area.
+-- cx,cy = map cell start for this area.
+-- cex,cey = end x and y to draw to
+function add_map_area(minx,miny,maxx,maxy,cx,cy,cex,cey)
+    local a = {}
+    a.minx = minx
+    a.miny = miny
+    a.maxx = maxx
+    a.maxy = maxy
+    a.cx = cx
+    a.cy = cy
+    a.cex = cex + 1
+    a.cey = cey + 1
+    
+    a.entered = false
+    a.show = false
+
+    a.entities = {}
+
+    add(areas,a)
+
+    return a
+end
+
+function entered_area(a)
+    a.entered = true
+    a.show = true
+
+end
+
+function left_area(a)
+    a.entered = false
+    a.show = false
+
+end
+
+function add_game_maps()
+    -- initialise areas that'll show up when you near them
+    local firstmap = add_map_area(0,0, 18,18, 0,0, 15,15)
+
+    -- bottom right, and keeping a portion when going top right
+    local secondmap = add_map_area(12,09, 32,32, 10,9, 32,29)
+    add_map_area(20,02, 29,09, 16,9, 32,16)
+    
+    -- top right
+    local thirdmap = add_map_area(20,02, 29,11, 20,02, 28,09)
+    local key = add_ent(3,2,16,thirdmap)
+    
+    key.type = 1 --make this a collectable
+
+    -- add a door and add the key as a blocker
+    local door = add_ent(13,8,126,secondmap)
+    door.type = 2
+    add_ent_alt_sprite(door,125)
+    add_ent_blocker(door,key)
+
 end
 
 
@@ -411,6 +478,20 @@ function is_map_solid(x,y,dx,dy)
     -- if we're not moving, we don't need to check
     if dx != 0 or dy != 0 then
 
+        -- super hacky, surely a better way?
+        -- list through the active area entities, see if one is a door and if it's on the cell
+        --  we're checking, we've got collision
+        for m in all(areas) do
+            if m.show then 
+                for e in all(m.entities) do
+                    if e.type == 2 and not e.triggered 
+                    and e.x / 8 == cell_x and e.y / 8 == cell_y then
+                        return true
+                    end
+                end
+            end
+        end
+
         -- if the cell we're moving to is solid, cannot move
         if is_cell_solid(cell_x, cell_y) then
             return true
@@ -423,6 +504,154 @@ function is_map_solid(x,y,dx,dy)
         end
     end
 end
+
+function dist(ax, ay, bx, by)
+    local x_diff = ax - bx
+    local y_diff = ay - by
+
+    return sqrt(x_diff * x_diff + y_diff * y_diff)
+end
+
+-- ########################################################################
+--                          popup text functions     start
+-- ########################################################################
+
+text_displayline = 1
+text_displaychar = 1
+text_displaytimer = 0
+
+function text_update()
+
+    if (#text_queue == 0) return
+
+    -- if we've above the character count for this line, either go to the next or delete everything
+    if text_displaychar >= #text_queue[1][text_displayline] then
+
+        if text_displayline >= #text_queue[1] then
+            
+            g_text_waiting_on_input = (not btn(4))
+
+            if g_text_waiting_on_input then
+                return
+            end
+
+            for i=1, #text_queue[1] do
+                del(text_queue, text_queue[1][i])
+            end
+
+            text_displayline = 1
+            text_displaychar = 1
+            text_displaytimer = 0
+
+            g_drawing_text = false
+
+            return
+        else
+            text_displayline += 1
+            text_displaychar = 1
+            text_displaytimer = 0
+        end
+    end
+
+    if (text_displaytimer < 1) text_displaytimer += 1 return
+    text_displaytimer = 0
+
+    text_displaychar += 1
+
+end
+
+function text_add(str)
+
+    local textlines = {}
+
+    local char = ""
+    local word = ""
+    local line = ""
+
+    local addtoline = function()
+        
+        -- if we're over the textbox width, lets add to the lines and move on
+        if #word + #line > 28 then
+            log("added " ..line.. " to textlines")
+            add(textlines, line)
+            line = ""
+        end
+
+        -- append the rest of the word before continuing
+        line = line ..word
+        word = ""
+
+    end
+
+    for i=1, #str do
+        
+        char = sub(str,i,i)
+        word = word ..char
+
+        --if we've encountered a space
+        if (char == " ") addtoline()
+
+    end
+
+    -- add anything left over into the text (if it's over the width)
+    addtoline()
+
+    -- add the rest of the line if haven't already
+    if (line != "") log("appended " ..line.. " to textlines") add(textlines, line)
+
+    add(text_queue, textlines)
+
+    g_drawing_text = true
+    text_displaytimer = 0
+
+    pl.dx = 0
+    pl.dy = 0
+
+end
+
+function text_draw()
+
+    if (#text_queue == 0) return
+
+    
+
+    rectfill(camera_x + 5, camera_y + 85, camera_x + 122, camera_y + 122, 1)
+    rect(camera_x + 4, camera_y + 84, camera_x + 123, camera_y + 123, 0)
+    rect(camera_x + 5, camera_y + 85, camera_x + 122, camera_y + 122, 2)
+    rect(camera_x + 6, camera_y + 86, camera_x + 121, camera_y + 121, 6)
+    clip(10, 90, 117, 27)
+
+    for i=1, #text_queue[1] do
+        if i < text_displayline then
+            print(text_queue[1][i], camera_x + 10, (camera_y + 110) - (8 * (text_displayline-i)), 7)
+            --print(text_queue[1][i], 5, 5 - (10 * i), 7)
+        elseif i == text_displayline then
+            print(sub(text_queue[1][i], 1, text_displaychar), camera_x + 10, (camera_y + 110), 7)
+          -- print(sub(text_queue[1][i], 1, text_displaychar), 5, 5, 7)
+        end
+
+    end
+
+    clip()
+
+    if g_text_waiting_on_input then
+        text_displaytimer += 1
+
+        -- Blinking text prompt display
+        if(text_displaytimer >= 0 and text_displaytimer < 30) pal(6, 5)
+        spr(123, camera_x + 110,camera_y + 112)
+        pal()
+
+        if (text_displaytimer > 60) text_displaytimer = 0
+    end
+
+end
+
+-- ########################################################################
+--                          debug/misc functions     start
+-- ########################################################################
+
+function wait(a) for i = 1,a do flip() end end
 
 function log(msg)
     printh(g_frame..": "..msg, "log.txt")
@@ -461,8 +690,40 @@ ddddddddd111111de11111eee111111eddd111eeee11610eee116101ed11610e008ffe0000ff2e2f
 5555555551111115d1dd11dee01dd11dd11d11eeed17611de7661011d111176d008ff20001ff22dd00d8ff10022888ffff888880008822003337733333811333
 55555555511111151111d11e11111d11111d111ee1766111e1761e1ee1e17611008ddd1000110ddd00dd01100dd22dd00dd22dd0008ddd10367667633d111663
 5555555551111115eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee00000000000000000000000000000000000000000000000066d33d6611033081
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000444000004444444400000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000414000004111111400000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000414000004444444400000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000006666666600000000444000004555d45400000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000666666000000000454a00004545d45400000000
+0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006666000000000045400000454505a400000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006600000000000454000004555055400000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000444000004444444400000000
 __gff__
-0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __map__
 3030303030303031303030303030303100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -485,7 +746,7 @@ __map__
 0000000000000000000000003100310031000000003131003130303030303030300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000003100310031000000003131000000000000000000310000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000003100313030003030303031000000000000000000310000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000003100000000000000000000000000000000000000310000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000003100000000000000300000000000000000000000310000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000003030303030303030300000000000000000000000310000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000310000000000303030303030300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000310000000000310000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
