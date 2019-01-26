@@ -20,6 +20,7 @@ g_frame = 0
 
 g_drawing_text = false
 g_text_waiting_on_input = false
+g_text_is_diary = false
 
 camera_x = 0
 camera_y = 0
@@ -28,6 +29,7 @@ camera_y = 0
 actors = {}
 areas = {}
 text_queue = {}
+text_displaying = {}
 
 -- main entry points
 function _init()
@@ -125,14 +127,14 @@ function pl_move()
 
 end
 
--- ########################################################################
+--- ########################################################################
 --                          actor functions     start
 -- ########################################################################
 
 function setup_pl_anims(a)
     -- right, down, left, and up consist of 4 frames
     a.anim_sz = { 4, 4, 4, 4 }
-		
+
     -- the actor transparent colour
     a.tcol = 0
 
@@ -184,7 +186,6 @@ function setup_pl_anims(a)
     a.anim[8][3] = 25
     a.anim[8][4] = -26
 end
-
 
 function setup_mon_anims(a)
     -- right, down, left, and up consist of 4 frames
@@ -360,15 +361,15 @@ function draw_actor(a)
     if (a.tcol != 0) palt(a.tcol, true)
 
     -- upper
-	local frame = a.anim[dir-1][a.frame]
+    local frame = a.anim[dir-1][a.frame]
 	local flip = false
-	if frame < 0 then frame = -frame; flip = true end
+	if (frame < 0) frame = -frame   flip = true
     spr(frame,     a.x,    a.y - 8,    1.0,    1.0, flip)
     
     -- lower
 	frame = a.anim[dir][a.frame]
 	flip = false
-	if frame < 0 then frame = -frame; flip = true end
+	if (frame < 0) frame = -frame    flip = true
     spr(frame,       a.x,    a.y,        1.0,    1.0, flip)
 
     -- then reenable it to draw
@@ -421,15 +422,18 @@ function update_ent(e)
     if e.type == 1 then
         if dist(pl.x,pl.y,e.x,e.y) < 7.5 then 
             e.triggered = true
-            text_add("collected a key! it must be my lucky day, better put on a lottery ticket then I think!")
+            --text_add("collected a key! __it must be my lucky day, __better put on a lottery ticket then i think!_!_!", true)
+            text_add("this is a journal entry, be kind to me, for as i am a fickle beast that should be handled with responsibility.",true)
             -- todo sound effect, maybe ptfx?
         end
     
     -- openable door - locked and has collision while blocker is active
     elseif e.type == 2 then
         if e.bl.triggered then
-            e.triggered = true
-            e.spr = e.spralt
+            if dist(pl.x,pl.y,e.x,e.y) < 16 then 
+                e.triggered = true
+                e.spr = e.spralt
+            end
         end
     end
 end
@@ -582,6 +586,7 @@ end
 
 text_displayline = 1
 text_displaychar = 1
+text_actualchar = 1
 text_displaytimer = 0
 
 function text_update()
@@ -589,7 +594,7 @@ function text_update()
     if (#text_queue == 0) return
 
     -- if we've above the character count for this line, either go to the next or delete everything
-    if text_displaychar >= #text_queue[1][text_displayline] then
+    if text_displaychar > #text_queue[1][text_displayline] then
 
         if text_displayline >= #text_queue[1] then
             
@@ -607,27 +612,55 @@ function text_update()
 
             text_displayline = 1
             text_displaychar = 1
+            text_actualchar = 1
             text_displaytimer = 0
 
             g_drawing_text = false
+            g_text_is_diary = false
 
             return
         else
             text_displayline += 1
             text_displaychar = 1
+            text_actualchar = 1
             text_displaytimer = 0
         end
+    end
+
+    -- If a diary, then add everything straight away
+    if g_text_is_diary then
+        for l=1, #text_queue[1] do
+            for l=1, #text_queue[1][l] do
+                text_displaying[l] = text_queue[1][l]
+            end
+        end
+
+        text_displayline = #text_queue[1]
+        text_displaychar = #text_queue[1][text_displayline]+1
+        text_actualchar = #text_displaying[text_displayline]
+        return
     end
 
     -- Every two frames display the next char
     if (text_displaytimer < 1) text_displaytimer += 1 return
     text_displaytimer = 0
 
-    text_displaychar += 1
+    if sub(text_queue[1][text_displayline], text_displaychar, text_displaychar) == "_" then
+        text_displaytimer = -4
+        text_displaychar += 1
+        return
+    end
 
+   -- log(""..text_displaying[text_displayline].." <- "..sub(text_queue[1][text_displayline], text_displaychar, text_displaychar))
+
+    text_displaying[text_displayline] = text_displaying[text_displayline] ..sub(text_queue[1][text_displayline], text_displaychar, text_displaychar)
+
+    text_displaychar += 1
+    text_actualchar += 1
+    
 end
 
-function text_add(str)
+function text_add(str, d)
 
     local textlines = {}
 
@@ -635,11 +668,13 @@ function text_add(str)
     local word = ""
     local line = ""
 
+    local line_limit = 26
+    if (d) line_limit = 24
+
     local addtoline = function()
         
         -- if we're over the textbox width, lets add to the lines and move on
-        if #word + #line > 28 then
-            log("added " ..line.. " to textlines")
+        if #word + #line > line_limit then
             add(textlines, line)
             line = ""
         end
@@ -654,7 +689,7 @@ function text_add(str)
         
         char = sub(str,i,i)
         word = word ..char
-
+        
         --if we've encountered a space
         if (char == " ") addtoline()
 
@@ -664,11 +699,17 @@ function text_add(str)
     addtoline()
 
     -- add the rest of the line if haven't already
-    if (line != "") log("appended " ..line.. " to textlines") add(textlines, line)
+    if (line != "") add(textlines, line)
 
     add(text_queue, textlines)
 
+    for i=1, #textlines do
+        add(text_displaying,"")
+    end
+
     g_drawing_text = true
+    g_text_is_diary = d
+
     text_displaytimer = 0
 
     pl.dx = 0
@@ -679,18 +720,58 @@ end
 function text_draw()
 
     if (#text_queue == 0) return
-    
-    rectfill(camera_x + 5, camera_y + 85, camera_x + 122, camera_y + 122, 1)
-    rect(camera_x + 4, camera_y + 84, camera_x + 123, camera_y + 123, 0)
-    rect(camera_x + 5, camera_y + 85, camera_x + 122, camera_y + 122, 2)
-    rect(camera_x + 6, camera_y + 86, camera_x + 121, camera_y + 121, 6)
-    clip(10, 90, 117, 27)
 
-    for i=1, #text_queue[1] do
+    text_start_x = camera_x
+    text_start_y = camera_y
+    box_start_x = camera_x
+    box_start_y = camera_y
+    box_end_x = camera_x
+    box_end_y = camera_y
+    box_col = 1
+
+    if g_text_is_diary then
+        box_start_x += 15
+        box_start_y += 5
+
+        box_end_x += 111
+        box_end_y += 122
+
+        text_start_x += 19
+        text_start_y += 10
+
+        box_col = 7
+    else
+        box_start_x += 5
+        box_start_y += 85
+
+        box_end_x += 122
+        box_end_y += 122
+
+        text_start_x += 10
+        text_start_y += 110
+    end
+
+    rectfill(box_start_x, box_start_y, box_end_x, box_end_y, box_col)
+
+    rect(box_start_x - 1,   box_start_y - 1,    box_end_x + 1,  box_end_y + 1,  0)
+    rect(box_start_x,       box_start_y,        box_end_x,      box_end_y,      2)
+    rect(box_start_x + 1,   box_start_y + 1,    box_end_x - 1,  box_end_y - 1,  6)
+
+    if (not g_text_is_diary) clip(10, 90, 117, 27)
+
+    for i=1, #text_displaying[1] do
         if i < text_displayline then
-            print(text_queue[1][i], camera_x + 10, (camera_y + 110) - (8 * (text_displayline-i)), 7)
+            if not g_text_is_diary then
+                print(text_displaying[i], text_start_x, text_start_y - (8 * (text_displayline-i)), 7)
+            else
+                print(text_displaying[i], text_start_x, text_start_y + (8 * (i-1)), 0)
+            end
         elseif i == text_displayline then
-            print(sub(text_queue[1][i], 1, text_displaychar), camera_x + 10, (camera_y + 110), 7)
+            if not g_text_is_diary then
+                print(sub(text_displaying[i], 1, text_actualchar), text_start_x, text_start_y, 7)
+            else
+                print(sub(text_displaying[i], 1, text_actualchar), text_start_x, text_start_y + (8 * (i-1)), 0)
+            end
         end
 
     end
@@ -702,7 +783,7 @@ function text_draw()
 
         -- Blinking text prompt display
         if(text_displaytimer >= 0 and text_displaytimer < 30) pal(6, 5)
-        spr(123, camera_x + 110,camera_y + 112)
+        spr(123, box_end_x - 12, box_end_y - 10)
         pal()
 
         if (text_displaytimer > 60) text_displaytimer = 0
@@ -719,6 +800,7 @@ function wait(a) for i = 1,a do flip() end end
 function log(msg)
     printh(g_frame..": "..msg, "log.txt")
 end
+
 
 __gfx__
 00000000eeeeeeee0000000000000000eeeeeeee0000000000000000000000000ffffff0000000000a9aaaa00000000000000000000000004544545400000000
