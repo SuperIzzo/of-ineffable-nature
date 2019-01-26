@@ -40,7 +40,7 @@ fade_screen_frame_time = 0
 -- main entry points
 function _init()
     --pl = add_actor(188,54,0)
-    pl = add_actor(209,120,0) --pixels
+    pl = add_actor(16,256,0) --pixels
     pl.isplayer = true
 
     add_game_maps()
@@ -500,10 +500,15 @@ function add_map_area(minx,miny,maxx,maxy,cx,cy,cex,cey)
     a.show = false
 
     a.entities = {}
+    a.links = {}
 
     add(areas,a)
 
     return a
+end
+
+function add_map_link(s, t)
+    add(s.link, t)
 end
 
 function entered_area(a)
@@ -519,24 +524,39 @@ function left_area(a)
 end
 
 function add_game_maps()
+
+    -- First Floor
+
+    --                                      Player XY       Cell XY
+    local ff_main_bedroom = add_map_area(   0,27,13,39,     0,27,13,36)
+    local corridor = add_map_area(          1,40,45,42,     0,37,46,43)
+
+
+
+
+
+
+
+
+
     -- initialise areas that'll show up when you near them
-    local firstmap = add_map_area(0,0, 18,18, 0,0, 15,15)
+    --local firstmap = add_map_area(0,0, 18,18, 0,0, 15,15)
 
     -- bottom right, and keeping a portion when going top right
-    local secondmap = add_map_area(12,09, 32,32, 10,9, 32,29)
-    add_map_area(20,02, 29,09, 16,9, 32,16)
+    --local secondmap = add_map_area(12,09, 32,32, 10,9, 32,29)
+    --add_map_area(20,02, 29,09, 16,9, 32,16)
     
     -- top right
-    local thirdmap = add_map_area(20,02, 29,11, 20,02, 28,09)
-    local key = add_ent(3,2,16,thirdmap)
+    --local thirdmap = add_map_area(20,02, 29,11, 20,02, 28,09)
+    --local key = add_ent(3,2,16,thirdmap)
     
-    key.type = 1 --make this a collectable
+    --key.type = 1 --make this a collectable
 
     -- add a door and add the key as a blocker
-    local door = add_ent(13,8,126,secondmap)
-    door.type = 2
-    add_ent_alt_sprite(door,125)
-    add_ent_blocker(door,key)
+    --local door = add_ent(13,8,126,secondmap)
+    --door.type = 2
+    --add_ent_alt_sprite(door,125)
+    --add_ent_blocker(door,key)
 
 end
 
