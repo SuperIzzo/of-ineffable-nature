@@ -152,34 +152,34 @@ function setup_pl_anims(a)
 
     -- upper frames - since they're all the same right now
     for i=1,4 do
-        a.anim[1][i] = 40   --right
-        a.anim[3][i] = 8    --down
-        a.anim[5][i] = 40   --left
-        a.anim[7][i] = 11   --up
+        a.anim[1][i] = 39   --right
+        a.anim[3][i] = 7    	--down
+        a.anim[5][i] = -39   --left
+        a.anim[7][i] = 9   	--up
     end
 
     -- right and left lower frames
-    a.anim[2][1] = 56
-    a.anim[2][2] = 57
-    a.anim[2][3] = 56
-    a.anim[2][4] = 58
+    a.anim[2][1] = 55
+    a.anim[2][2] = 56
+    a.anim[2][3] = 55
+    a.anim[2][4] = 57
     
     -- left is the same as right
     for i=1,4 do
-        a.anim[6][i] = a.anim[2][i]
+        a.anim[6][i] = -a.anim[2][i]
     end
 
     -- down lower frames
-    a.anim[4][1] = 24
-    a.anim[4][2] = 25
-    a.anim[4][3] = 24
-    a.anim[4][4] = 26
+    a.anim[4][1] = 23
+    a.anim[4][2] = 24
+    a.anim[4][3] = 23
+    a.anim[4][4] = -24
 
     -- up lower frames
-    a.anim[8][1] = 27
-    a.anim[8][2] = 28
-    a.anim[8][3] = 27
-    a.anim[8][4] = 29
+    a.anim[8][1] = 25
+    a.anim[8][2] = 26
+    a.anim[8][3] = 25
+    a.anim[8][4] = -26
 end
 
 -- add an actor to the pool: 
@@ -302,10 +302,16 @@ function draw_actor(a)
     if (a.tcol != 0) palt(a.tcol, true)
 
     -- upper
-    spr(a.anim[dir-1][a.frame],     a.x,    a.y - 8,    1.0,    1.0, a.dir == 3)
+	local frame = a.anim[dir-1][a.frame]
+	local flip = false
+	if frame < 0 then frame = -frame; flip = true end
+    spr(frame,     a.x,    a.y - 8,    1.0,    1.0, flip)
     
     -- lower
-    spr(a.anim[dir][a.frame],       a.x,    a.y,        1.0,    1.0, a.dir == 3)
+	frame = a.anim[dir][a.frame]
+	flip = false
+	if frame < 0 then frame = -frame; flip = true end
+    spr(frame,       a.x,    a.y,        1.0,    1.0, flip)
 
     -- then reenable it to draw
     if (a.tcol != 0) palt(a.tcol, false)
