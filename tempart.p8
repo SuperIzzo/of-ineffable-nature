@@ -32,7 +32,7 @@ text_queue = {}
 -- main entry points
 function _init()
     --pl = add_actor(188,54,0)
-    pl = add_actor(25,25,0)
+    pl = add_actor(2 * 8,32 * 8,0)
     pl.isplayer = true
 
     add_game_maps()
@@ -89,8 +89,10 @@ function _draw()
 		lightning = #lightning_pals
 	end
 	
-	set_pal(lightning_pals[lightning] )
+	--set_pal(lightning_pals[lightning] )
 	
+    map(0,0,0,0,256,256)
+
     -- loop through areas, if they can show, draw the map and its entities	
     for m in all(areas) do
         if m.show then 

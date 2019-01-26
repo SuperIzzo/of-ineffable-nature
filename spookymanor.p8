@@ -31,34 +31,60 @@ areas = {}
 text_queue = {}
 text_displaying = {}
 
+just_teleported = false
+pause_game_for_warp = false
+fade_screen_x = 0
+fade_screen_y = 0
+fade_screen_frame_time = 0
+
 -- main entry points
 function _init()
     --pl = add_actor(188,54,0)
-    pl = add_actor(25,25,0)
+    pl = add_actor(209,120,0) --pixels
     pl.isplayer = true
 
     add_game_maps()
+    add_teleporters()
 end
 
 function _update()
-    if not g_drawing_text then 
-        foreach(actors, update_actor)
-    else
-        text_update()
-    end
 
-    local cx = (pl.x / 8)
-    local cy = (pl.y / 8) + 0.75
-
-    -- loop through areas and show them if need be
-    for m in all(areas) do
-        if cx >= m.minx and cx < m.maxx and cy >= m.miny and cy < m.maxy then
-            if(not m.entered) entered_area(m)
-
-            foreach(m.entities, update_ent)
+    if not pause_game_for_warp then
+        if not g_drawing_text then 
+            foreach(actors, update_actor)
         else
-            if(m.entered) left_area(m)
+            text_update()
         end
+
+        local cx = (pl.x / 8)
+        local cy = (pl.y / 8) + 0.75
+
+        -- loop through areas and show them if need be
+        for m in all(areas) do
+            if cx >= m.minx and cx < m.maxx and cy >= m.miny and cy < m.maxy then
+                if(not m.entered) entered_area(m)
+
+                foreach(m.entities, update_ent)
+            else
+                if(m.entered) left_area(m)
+            end
+        end
+        
+        for t in all(teleporters) do
+            if cx >= t.minx and cx <= t.maxx and cy >= t.miny and cy <= t.maxy then
+                
+                -- we want a nice 'fade out' to happen, so pause everything to do this before warping
+                if not pause_game_for_warp then
+                    pause_game_for_warp = true
+                    fade_screen_x = 0
+                    fade_screen_y = 0
+
+                    teleporter_using = t
+                end
+            end
+        end
+    else
+        process_teleporting()
     end
 
     g_frame += 1
@@ -67,33 +93,39 @@ end
 function _draw()
 
     --clear the screen first
-    cls()
-    camera(camera_x, camera_y)
+    if not pause_game_for_warp or just_teleported then
+        cls()
+        
+        camera(camera_x, camera_y)
 
-    -- loop through areas, if they can show, draw the map and its entities
-    for m in all(areas) do
-        if m.show then 
-            --map(m.cx,m.cy, m.cx*8,m.cy*8, m.cex - m.cx,m.cey - m.cy)
-            foreach(m.entities, draw_ent)
+        -- loop through areas, if they can show, draw the map and its entities
+        for m in all(areas) do
+            if m.show then 
+                --map(m.cx,m.cy, m.cx*8,m.cy*8, m.cex - m.cx,m.cey - m.cy)
+                foreach(m.entities, draw_ent)
+            end
         end
+        map(0,0,0,0,256,256) -- todo remove this!!!
+        -- map(0,0,0,0,16,16,flag_sprite_map_bottom_layer)
+
+        foreach(actors, draw_actor)
+
+        -- map(0,0,0,0,16,16,flag_sprite_map_top_layer)
+        
+        if (g_drawing_text) text_draw()
+     else
+        draw_teleport_warp()
     end
-    map(0,0,0,0,256,256)
-    -- map(0,0,0,0,16,16,flag_sprite_map_bottom_layer)
 
-    foreach(actors, draw_actor)
 
-    -- map(0,0,0,0,16,16,flag_sprite_map_top_layer)
-    
-    if (g_drawing_text) text_draw()
-    
-    local cx = (pl.x / 8)
-    local cy = (pl.y / 8) + 0.75
+    --local cx = (pl.x / 8)
+   -- local cy = (pl.y / 8) + 0.75
     --print("world x "..pl.x  ..","..pl.y,camera_x,camera_y+100,7)
     --print("map x "..cx  ..","..cy,camera_x,camera_y+110,7)
     --print("cxy "..pl.cx ..","..pl.cy.." mxy "..pl.mx..","..pl.my,camera_x,120,7)
     --print("d: "..dist(pl.x,pl.y,areas[4].entities[1].x,areas[4].entities[1].y), camera_x,camera_y+120,7)
     
-   print("fps "..stat(7) ,camera_x + 100,camera_y,7)
+   --print("fps "..stat(7) ,camera_x + 100,camera_y,7)
 
    
 
@@ -120,7 +152,13 @@ function pl_move()
     -- down
     if (btn(3)) y = 1
 
-    add_force_to_actor(pl,x,y)
+    if not just_teleported then
+        add_force_to_actor(pl,x,y)
+    else
+        if (y == 0) just_teleported = false
+    end
+
+    
 
     camera_x = pl.x - 64
     camera_y = pl.y - 64
@@ -502,6 +540,102 @@ function add_game_maps()
 
 end
 
+-- ########################################################################
+--                          teleporter functions     start
+-- ########################################################################
+
+teleporters = {}
+
+-- adds a teleporter to be looking out to teleport the player
+--  min/max of the activation area, destination xy, and if facing down. in cell coords
+function add_teleporter(minx,miny,maxx,maxy, desx, desy, d)
+    local t = {}
+
+    t.minx = minx
+    t.miny = miny
+    t.maxx = maxx
+    t.maxy = maxy
+    t.desx = desx
+    t.desy = desy
+    t.face_down = d
+
+    add(teleporters,t)
+end
+
+function add_teleporters()
+    
+    -- 3rd to 2nd floor
+    add_teleporter(25,19, 27,19,  31,43, false)
+
+
+    -- 2nd to 3rd floor
+    add_teleporter(30,45, 32,45,  26,17, false)
+    -- 2nd to ground floor
+    add_teleporter(25,44, 27,44,  75,19, false)
+
+    -- ground to 2rd floor
+    add_teleporter(74,21, 76,21,  26,43, false)
+    -- ground to basement floor
+    add_teleporter(79,20, 81,20,  68,32, true)
+
+    -- basement to ground floor
+    add_teleporter(67,30, 69,30,  80,19, false)
+end
+
+function process_teleporting()
+    if fade_screen_y >= 127 then
+
+        pl.x = teleporter_using.desx * 8
+        pl.y = teleporter_using.desy * 8
+        camera_x = pl.x - 64
+        camera_y = pl.y - 64
+
+        pl.dx = 0
+        pl.dy = 0
+
+        pl.frame = 1
+        
+        if(not teleporter_using.face_down) pl.dir = 4
+
+        just_teleported = true
+        pause_game_for_warp = false
+
+    end
+end
+
+function draw_teleport_warp()
+    if fade_screen_y <= 127 and fade_screen_y >= 0 then
+        
+        if (fade_screen_frame_time < 1) fade_screen_frame_time+=1 return
+
+        local amount_per_frame = 6
+        
+        for y=0, fade_screen_y + amount_per_frame do
+            
+            for x=fade_screen_x, fade_screen_x + 63 do
+                pset(camera_x+x,camera_y+y-1,0)
+            end
+        end
+
+        if (fade_screen_frame_time < 3) fade_screen_frame_time+=1 return
+        
+        if(fade_screen_y == 0) sfx(21)
+
+        fade_screen_x += 64
+
+        for y=0, fade_screen_y + amount_per_frame do
+            
+            for x=fade_screen_x, fade_screen_x + 63 do
+                pset(camera_x+x,camera_y+y-1,0)
+            end
+        end
+
+        fade_screen_x = 0
+        fade_screen_frame_time = 0
+
+        fade_screen_y += amount_per_frame+1
+    end
+end
 
 -- ########################################################################
 --                          physics functions     start
@@ -567,7 +701,7 @@ function is_map_solid(x,y,dx,dy)
         -- annoying issue with clipping into a right side wall and being able to still move upwards
         --  doing this will check for the next block over from the current if overhanging into that
         --  column by more than a distance of 0.3
-        elseif mod_x >= 0.3 then
+        elseif mod_x >= 0.15 then
             return is_cell_solid(cell_x+1, cell_y)
         end
     end
@@ -965,6 +1099,7 @@ __sfx__
 011a00200415300000000000000000000001330000000000000000214300000000000000000000000000312300000051330000000000001130000000000000000000000000031430000000000000000013300000
 012000100071400711007110071100711007110071100711027110271102711027110271102711027110c7010c7010c7010c7000c1020c1020c1000e1000e1000e10013100141001410013100131000000000000
 01100008007150060502715006000071500600027150000009700000000a700000000b700000000a7000000015700000000000000000000000000000000000000000000000000000000000000000000000000000
+010800001705500005160550000515055000051405500005130550000512055000051105500005100550d0050f0550f0050e055110050c0550d0050b0550f0050a05511005090551300508055150050705207055
 __music__
 01 03414240
 02 04424344
