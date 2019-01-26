@@ -132,6 +132,9 @@ end
 function setup_pl_anims(a)
     -- right, down, left, and up consist of 4 frames
     a.anim_sz = { 4, 4, 4, 4 }
+		
+    -- the actor transparent colour
+    a.tcol = 0
 
     for i=1, 8 do
         a.anim[i] = {}
@@ -182,6 +185,64 @@ function setup_pl_anims(a)
     a.anim[8][4] = -26
 end
 
+
+function setup_mon_anims(a)
+    -- right, down, left, and up consist of 4 frames
+    a.anim_sz = { 4, 4, 4, 4 }
+	
+	-- the actor transparent colour
+    a.tcol = 14
+	
+    for i=1, 8 do
+        a.anim[i] = {}
+        for y=1, 4 do
+            a.anim[i][y] = 0
+        end
+    end
+    
+    -- walk loop frames alternate so save disk space: frame 1, frame 2, frame 1, frame 3
+    -- 1 = upper right
+    -- 2 = lower right
+    -- 3 = upper down
+    -- 4 = lower down
+    -- 5 = upper left
+    -- 6 = lower left
+    -- 7 = upper top
+    -- 8 = lower top
+
+    -- upper frames - since they're all the same right now
+    for i=1,4 do
+        a.anim[1][i] = 33   --right
+        a.anim[3][i] = 1   	--down
+        a.anim[5][i] = 36   --left
+        a.anim[7][i] = 4   	--up
+    end
+
+    -- right lower frames
+    a.anim[2][1] = 49
+    a.anim[2][2] = 50
+    a.anim[2][3] = 49
+    a.anim[2][4] = 51
+    
+     -- left lower frames
+    a.anim[6][1] = 52
+    a.anim[6][2] = 53
+    a.anim[6][3] = 52
+    a.anim[6][4] = 54
+
+    -- down lower frames
+    a.anim[4][1] = 17
+    a.anim[4][2] = 18
+    a.anim[4][3] = 17
+    a.anim[4][4] = 19
+
+    -- up lower frames
+    a.anim[8][1] = 20
+    a.anim[8][2] = 21
+    a.anim[8][3] = 20
+    a.anim[8][4] = 22
+end
+
 -- add an actor to the pool: 
 -- x pos
 -- y pos
@@ -221,9 +282,6 @@ function add_actor(x,y,at)
     a.frametime = 0
 
     a.isplayer = false
-
-    -- the actor transparent colour
-    a.tcol = 0
 
     add(actors, a)
 
