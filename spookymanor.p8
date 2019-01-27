@@ -48,8 +48,8 @@ fade_screen_frame_time = 0
 function _init()
 
     --mon = add_actor(38,328,1)
-    pl = add_actor(344,273,0) --pixels
-    --pl = add_actor(24,256,0) --pixels
+    --pl = add_actor(344,273,0) --pixels
+    pl = add_actor(24,256,0) --pixels
     pl.isplayer = true
     
     add_game_maps()
@@ -153,11 +153,12 @@ end
 function _draw()
 
 	set_light_level(nil)
+	set_light_level(5)
 	
-	set_light_level(5)		
-	
-	if( rnd(50) < 1 ) add_lightning( 10, 16 )
-	
+    if current_flow_state >= 2 and flow_2_lightning_flashed then
+	   -- if( rnd(210) < 1 ) add_lightning( 5 + rnd(10), 12 + rnd(8) )
+	end
+
     --clear the screen first
     if not pause_game_for_warp or just_teleported then
         cls()
@@ -165,7 +166,7 @@ function _draw()
         camera(camera_x, camera_y)
 
         if not can_flow_render() then
-            if (g_drawing_text) text_draw()
+            if (g_drawing_text) draw_lightnings() text_draw() 
             return
         end
 
@@ -245,11 +246,11 @@ function _draw()
 
 	draw_lightnings()
 	
-    local cx = (pl.x / 8)
-    local cy = (pl.y / 8) + 0.75
-    print("world x "..pl.x  ..","..pl.y,camera_x,camera_y+5,7)
-    print("map x "..cx  ..","..cy,camera_x,camera_y+15,7)
-    print("s"..current_flow_state.."."..flow_states[current_flow_state].stage ,camera_x + 100,camera_y,7)
+    --local cx = (pl.x / 8)
+    --local cy = (pl.y / 8) + 0.75
+    --print("world x "..pl.x  ..","..pl.y,camera_x,camera_y+5,7)
+    --print("map x "..cx  ..","..cy,camera_x,camera_y+15,7)
+    --print("s"..current_flow_state.."."..flow_states[current_flow_state].stage ,camera_x + 100,camera_y,7)
    --print("fps "..stat(7) ,camera_x + 100,camera_y,7)
 end
 
@@ -432,7 +433,7 @@ function pl_move()
 	pl.attack = btnp(4)
     pl.use = btnp(5)
 
-    if not just_teleported then
+    if not just_teleported and can_pl_move() then
         add_force_to_actor(pl,x,y)
     else
         if (y == 0) just_teleported = false
@@ -1373,6 +1374,16 @@ function can_flow_render()
     return true
 end
 
+function can_pl_move()
+    if current_flow_state == 1 then
+        return (flow_states[current_flow_state].frametime > 270)
+    elseif current_flow_state == 2 then
+        return (not flow_2_lightning_flashed or flow_states[current_flow_state].frametime > 90)
+    end
+
+    return true
+end
+
 function flow_init_common()
     flow_states[current_flow_state].frametime = 0
     flow_states[current_flow_state].stage += 1
@@ -1383,6 +1394,8 @@ end
 function flow_exit_common()
     current_flow_state += 1
 end
+
+flow_2_lightning_flashed = false
 
 ambience_initialised = false
 music_initialised = false
@@ -1445,6 +1458,26 @@ function flow_2_update()
     if not f1_bedroom_door.triggered then
         if (dist(pl.x,pl.y, 72,281) < 16) f1_bedroom_door.triggered = true
     end
+
+    if not flow_2_lightning_flashed then
+        if (dist(pl.x,pl.y, 72,324) < 8) then
+            flow_2_lightning_flashed = true
+            flow_states[current_flow_state].frametime = 0
+            log("adding lightning")
+            add_lightning(10, 16)
+            
+        end
+    else
+        if flow_states[current_flow_state].frametime == 4 then
+            text_add("aaaaaaaaaaaggggghhhh!", false, true, true)
+        end
+
+        --if (flow_states[current_flow_state].frametime == 30) g_light_level = 7
+       --if (flow_states[current_flow_state].frametime == 35) g_light_level = 6
+       -- if (flow_states[current_flow_state].frametime == 40) g_light_level = 5
+       -- if (flow_states[current_flow_state].frametime == 45) g_light_level = 4
+    end
+
 
     -- we're done on this stage once we've fused up the first generator
     if f1_generator.triggered then
