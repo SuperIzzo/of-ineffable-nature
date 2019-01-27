@@ -298,8 +298,52 @@ end
 --                          player functions     start
 -- ########################################################################
 
-function pl_move()
+function pl_move2()
 
+    local x = 0
+    local y = 0
+	
+	local cell_size = 8
+	local speed = 1;
+	
+	pl.move_timer = (pl.move_timer or 0) -1
+	
+	if( pl.move_timer < 0) then	
+		pl.dx = 0
+		pl.dy = 0
+		
+		-- left
+		if (btn(0))		pl.dx, pl.dy = pl.dx-1, 	0
+
+		-- right
+		if (btn(1))		pl.dx, pl.dy = pl.dx+1, 	0
+
+		-- up
+		if (btn(2))		pl.dx, pl.dy = 0,	pl.dy-1
+
+		-- down
+		if (btn(2))		pl.dx, pl.dy = 0,	pl.dy+1
+		
+		pl.attack = btnp(5)
+		pl.use = btnp(5)
+	end
+	
+	if( pl.dx ~= 0 or pl.dy ~= 0 )
+		
+	end
+
+    if not just_teleported then
+        add_force_to_actor(pl,x,y)
+    else
+        if (y == 0) just_teleported = false
+    end
+
+    camera_x = pl.x - 64
+    camera_y = pl.y - 64
+
+end
+
+function pl_move()
     local x = 0
     local y = 0
 
