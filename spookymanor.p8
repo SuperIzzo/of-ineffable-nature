@@ -607,8 +607,8 @@ end
 function add_ent(m, x,y,sp,ontop,drawblack,fliph,flipv)
     local e = {}
 
-    e.x = (m.cx + x) * 8
-    e.y = (m.cy + y) * 8
+    e.x = x * 8
+    e.y = y * 8
     e.spr = sp
 
     -- 0 = none, 1 = collectable, 2 = openable door
@@ -753,18 +753,18 @@ function add_area_main_bedroom()
 	 -- bedroom props - these coords are offset from the cell xy passed into add_map_area
     -- ceilings above the door    
 
-    add_ent(area,	3,4,		s_small_table)
+    add_ent(area,	3,	31,		s_small_table)
 
-    add_ent(area,	2,7,		s_chair)
-    add_ent(area,	3,7,		s_table)
-    add_ent(area,	4,7,		s_chair, false, false, true)
+    add_ent(area,	2,	34,		s_chair)
+    add_ent(area,	3,	34,		s_table)
+    add_ent(area,	4,	34,		s_chair, false, false, true)
     
-    add_ent(area,	6,3,		s_shelf_top)
-    add_ent(area,	7,2,		s_shelf_top)
-    add_ent(area,	12,3,		s_shelf_top)
+    add_ent(area,	6,	30,		s_shelf_top)
+    add_ent(area,	7,	29,		s_shelf_top)
+    add_ent(area,	12,	30,		s_shelf_top)
 	
-    add_ent(area,	11, 4,	s_table)
-    add_ent(area,	2, 2, 		s_clock )
+    add_ent(area,	11, 31,		s_table)
+    add_ent(area,	2, 	29, 	s_clock )
 	
 	return area
 end
@@ -788,10 +788,10 @@ function add_game_maps()
     local ff_stairs = add_map_area(         24,43,33,46,    24,44,33,46)
 
 	-- corridor props	
-	local ff_ceil_one = add_ent(ff_corridor, 9,1,  {82, 119}, false, true)
+	local ff_ceil_one = add_ent(ff_corridor, 9,38,  {82, 119}, false, true)
     disable_ent_collision(ff_ceil_one)
 	
-	local ff_bedroom_door = add_ent(ff_corridor, 9,2, s_door)
+	local ff_bedroom_door = add_ent(ff_corridor, 9,39, s_door)
     ff_bedroom_door.type = 2
     ff_bedroom_door.triggered = true --todo remove
 
