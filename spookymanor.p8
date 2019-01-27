@@ -269,8 +269,12 @@ function _draw()
         print("game over", camera_x+48, camera_y+64, 7)
     end
 
-	draw_light_level()
-	draw_lightnings()
+	if	g_temp_effect_palette and g_temp_effect_palette:tick() then
+		set_pal( g_temp_effect_palette )
+	else
+		draw_light_level()
+		draw_lightnings()
+	end
 	
     
 
@@ -359,6 +363,35 @@ function draw_lightnings()
     if( intensity <= 0 ) g_lightnings = {}		
             
     if( intensity > g_light_level ) set_pal( light_lv_pals[intensity] );
+end
+
+-- ########################################################################
+--                          pal effects     start
+-- ########################################################################
+g_temp_effect_palette = nil
+
+function create_temp_pal(t)
+	local temp_pal = {}	
+	temp_pal.timer = t or 10
+	
+	function temp_pal:tick()
+		if( self.timer>0 ) self.timer -= 1
+		return self.timer>0;
+	end
+	
+	return temp_pal
+end
+
+function redify_screen()
+	local red_cols			= { 0, 2, 8, 14, 4,		0,0,2,2,8,8,8,8,1 }
+	-- red_pal			= { 2, 8, 0, 14, 	8, 4, 14, 8, 		14,  2, 2, 0,  	8, 2, 8, 0}
+	
+	local palette = create_temp_pal(10)		
+	for i =1,16 do
+		palette[i] = red_cols[ flr(rnd(#red_cols))+1]
+	end
+	
+	g_temp_effect_palette = palette		
 end
 
 -- ########################################################################
@@ -799,7 +832,7 @@ function process_actor_ai(a)
             sfx(-1, 0)
             sfx(11, 0)
             
-            --todo screen pal change for red?
+			redify_screen()        
         end
 
         a.attack = false
