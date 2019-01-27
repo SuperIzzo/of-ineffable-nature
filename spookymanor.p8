@@ -529,7 +529,7 @@ function get_pl_floor()
 		end
 	end
 	
-	return -1
+	return 0
 end
 
 function setup_pl_anims(a)
@@ -1654,7 +1654,7 @@ function add_game_maps()
 	add_map_link(fb_corridor, fb_gen_area)
 		
 	
-	add_lswitch( fb_gen_area, 	-1,		58,  33)
+	add_lswitch( fb_gen_area, 	0,		58,  33)
 end
 
 function text_for_flow_4_generator_fueled()
