@@ -47,9 +47,9 @@ fade_screen_frame_time = 0
 -- main entry points
 function _init()
 
+    --mon = add_actor(38,328,1)
     pl = add_actor(24,256,0) --pixels
     pl.isplayer = true
-    
     
     add_game_maps()
     add_teleporters()
@@ -57,13 +57,12 @@ function _init()
 
     init_flow()
 
-    mon = add_actor(38,328,1)
-
-    
 end
 
 function _update()
-    
+
+    update_flow()
+
     if pl.health <= 0 then
         g_player_died = true
     else
@@ -101,7 +100,10 @@ function _update()
 
         if fade_screen_y >= 127 then
             wait(15)
+
+            -- On a death reset, skip the intro next time
             printh('nointro', '@clip')
+
             run()
         end
     end
@@ -233,7 +235,7 @@ function _draw()
    -- local cy = (pl.y / 8) + 0.75
    -- print("world x "..pl.x  ..","..pl.y,camera_x,camera_y+100,7)
     --print("map x "..cx  ..","..cy,camera_x,camera_y+110,7)
-    print("s "..current_flow_state ,camera_x + 100,camera_y,7)
+    print("s"..current_flow_state.."."..flow_states[current_flow_state].stage ,camera_x + 100,camera_y,7)
    --print("fps "..stat(7) ,camera_x + 100,camera_y,7)
 end
 
@@ -989,12 +991,12 @@ function add_game_maps()
     local f1_stairs = add_map_area(         24,43,33,46,    24,44,33,46)	
 	
 	-- doors
-	local f1_bedroom_door 		= add_door( f1_corridor, 9,39, 					s_wall_brown)
-	local f1_library_door 			= add_door( f1_corridor, 19,39, 					s_wall_brown, true)
-	local f1_bedroom_door 		= add_door( f1_corridor, 43,39, 					s_wall_brown)
+	f1_bedroom_door 		    = add_door( f1_corridor, 9,39, 		s_wall_brown)
+	local f1_library_door 		= add_door( f1_corridor, 19,39, 	s_wall_brown, true)
+	local f1_bedroom_door 		= add_door( f1_corridor, 43,39, 	s_wall_brown)
 	
-	local f1_bathroom_door 		= add_door( f1_bathroom, 9,46, 					s_wall_bath)
-	local f1_spareroom_door 	= add_door( f1_spare_bedroom, 43,46, 	s_wall_stripe)
+	local f1_bathroom_door 		= add_door( f1_bathroom, 9,46, 		s_wall_bath)
+	local f1_spareroom_door 	= add_door( f1_spare_bedroom, 43,46,s_wall_stripe)
 
     --add_map_link(f1_main_bedroom, f1_corridor, f1_bedroom_door)
     add_map_link(f1_bathroom, f1_corridor)
@@ -1065,6 +1067,7 @@ current_flow_state = 1
 
 function flow_init_common()
 
+    flow_states[current_flow_state].stage += 1
 end
 function flow_update_common()
 
@@ -1089,6 +1092,7 @@ end
 function flow_1_init()
     flow_init_ambience()
     
+    
 
 end
 function flow_1_update()
@@ -1105,6 +1109,8 @@ end
 function flow_2_init()
     -- As we can skip the intro on a death, init ambience if done so
     flow_init_ambience()
+
+    f1_bedroom_door.triggered = true
 
 end
 function flow_2_update()
