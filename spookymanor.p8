@@ -48,8 +48,8 @@ fade_screen_frame_time = 0
 function _init()
 
     --mon = add_actor(38,328,1)
-    --pl = add_actor(208,330,0) --pixels
-    pl = add_actor(24,256,0) --pixels
+    pl = add_actor(344,273,0) --pixels
+    --pl = add_actor(24,256,0) --pixels
     pl.isplayer = true
     
     add_game_maps()
@@ -101,7 +101,7 @@ function _update()
         if fade_screen_y >= 127 then
             wait(15)
 
-            -- On a death reset, skip the intro next time
+            -- on a death reset, skip the intro next time
             printh('nointro', '@clip')
 
             run()
@@ -387,7 +387,7 @@ end
 -- ########################################################################
 
 function actor_facing_entity(actor, e)
-	local action_dist = 8	
+	local action_dist = 12	
 	if( abs(actor.x - e.x) + abs(actor.x - e.x) > action_dist ) return false
 	if( actor.x < e.x and actor.dir == 3) return false
 	if( actor.x > e.x and actor.dir == 1) return false
@@ -836,7 +836,7 @@ end
 -- ########################################################################
 
 function add_ent_blocker(e, b)
-    e.bl = b
+    e.blocker = b
 end
 
 function add_ent_alt_sprite(e,s)
@@ -921,6 +921,9 @@ end
 
 function update_ent(e)
 
+    -- old function
+    if (true) return
+
     if (e.triggered) return
 
     -- collectable - static and drawing until player picks it up
@@ -936,6 +939,7 @@ function update_ent(e)
     elseif e.type == 2 then
         if e.bl and e.bl.triggered then
             if dist(pl.x,pl.y,e.x,e.y) < 16 then 
+                sfx(14, 0)
                 e.triggered = true
                 e.spr = e.spralt
             end
@@ -1001,9 +1005,11 @@ function add_door( area, x,y, spwall, boarded)
 	end
 	
 	function door:on_use(actor)
-		if self.triggered then 
+		if self.triggered then
+            sfx(14, 0)
 			self.triggered = false
 		elseif not self.blocker or self.blocker.triggered then
+            sfx(14, 0)
 			self.triggered = true
 		else 
 			local msg = self.blocker.block_text or 
@@ -1097,7 +1103,8 @@ function add_area_f1_main_bedroom()
 
     add_ent(area,	2,	34,		s_chair)
     local e = add_ent(area,	3,	34,		s_table)
-	e.on_use = action_text("irene used the table, but nothing happened")
+
+	e.on_use = action_text("irene attacked the table and hurt it_._._. emotionally")
 	e.on_attack = action_text("irene used the table, but nothing happened")
 	
     add_ent(area,	4,	34,		s_chair, false, false, true)
@@ -1165,10 +1172,95 @@ end
 function add_area_f1_storage()
 	local area = add_map_area(        39,30,46,39,    39,30,46,36)
 	
-	add_ent(area, 41, 33,		s_generator)	
-	add_ent(area, 45, 33,		s_cupboard)
-	
+	f1_fuse_cupboard = add_ent(area, 45, 33,		s_cupboard)
+
+    function f1_fuse_cupboard:on_use(actor)
+        if not self.triggered then
+            sfx(8, 0)
+			self.triggered = true
+            
+            text_add("okay, now i can use these fuses on the generators in the house. ____ i need to get the power back up and running__.__.__.__ damn storm!")
+		end
+		
+		return true
+	end
+
+    f1_generator = add_ent(area, 41, 33,		s_generator)
+    add_ent_blocker(f1_generator, f1_fuse_cupboard)
+
+    function f1_generator:on_use(actor)
+		
+        if self.blocker then
+            if not self.triggered then
+                if self.blocker.triggered then
+                    sfx(8, 0)
+                    self.triggered = true
+                    
+                    -- adding fuel
+                    if current_flow_state == 4 then
+                        text_for_flow_4_generator_fueled()
+
+                    else
+                        text_add("sweet!___ h_m_m_m___ doesn't appear to be working__.__.__._____ ah yes, probably needs some fuel. ____ i think there was some upstairs in the room being constructed.")
+                    end
+                else
+                    text_add("i need the fuses in the cupboard just over there to get this running.")
+                end
+            end
+		end
+		
+		return true
+	end
+
 	return area
+end
+
+function add_area_f2_construction_a()
+    local area = add_map_area(14,4,23,10,    	14,4,23,10)
+
+    f2_construction_fuel_cupboard = add_ent(area, 15, 7, s_cupboard)
+    
+    function f2_construction_fuel_cupboard:on_use(actor)
+        if not self.triggered then
+            sfx(8, 0)
+			self.triggered = true
+            
+            text_add("not where i expected it to be but okay.___ now lets finally get those lights back on_._._.___ i should power this floor and the lower floor first.")
+		end
+		
+		return true
+	end
+
+    
+
+    return area
+end
+
+function add_area_f2_construction_b()
+    local area = add_map_area(24,4,38,10,    	24,4,38,10)
+
+    f2_generator = add_ent(area, 37, 7,		s_generator)
+    add_ent_blocker(f2_generator, f2_construction_fuel_cupboard)
+
+    function f2_generator:on_use(actor)
+		
+        if self.blocker then
+            if not self.triggered then
+                if self.blocker.triggered then
+                    sfx(8, 0)
+                    self.triggered = true
+
+                    text_for_flow_4_generator_fueled()
+                else
+                    text_add("i need to find the fuel first_._._.___ should be somewhere around here.")
+                end
+            end
+		end
+		
+		return true
+	end
+
+    return area
 end
 
 function add_game_maps()
@@ -1211,8 +1303,8 @@ function add_game_maps()
 	local f2_bedroom1			= add_map_area(0,6,4,10,    			0,6,4,10)
 	local f2_bedroom2			= add_map_area(9,6,13,10,    		9,6,13,10)
 	local f2_livingroom			= add_map_area(6,18,16,24,    	6,18,16,24)
-	local f2_construction_a	= add_map_area(14,4,23,10,    	14,4,23,10)
-	local f2_construction_b	= add_map_area(24,4,38,10,    	24,4,38,10)
+	local f2_construction_a	= add_area_f2_construction_a()
+	local f2_construction_b	= add_area_f2_construction_b()
 	local f2_peaceroom		= add_map_area(39,4,46,10,    	39,4,46,10)
 	local f2_office					= add_map_area(38,18,46,24,   	38,18,46,24)	
 	
@@ -1255,14 +1347,24 @@ end
 --                          flow functions     start
 -- ########################################################################
 
--- Used for blocking entry at the start
+function text_for_flow_4_generator_fueled()
+    if f1_generator.triggered and not f2_generator.triggered then
+        text_add("why did i fuel this one first?____ the mind works in mysterious ways_._._._")
+    elseif not f1_generator.triggered and f2_generator.triggered then
+        text_add("ugh__, this fuel stinks!___ now to fuel the one below.")
+    elseif f1_generator.triggered and f2_generator.triggered then
+        text_add("now that the generators up here are running, i need to activate the basement one to stabilise these!")
+    end
+end
+
+-- used for blocking entry at the start
 flow_blocker_timer = 0
 
 flow_states = {}
 current_flow_state = 1
 
--- 1 = Bedroom wakeup (no player control)
--- 2 = Go to the storage for a fuse
+-- 1 = bedroom wakeup (no player control)
+-- 2 = go to the storage for a fuse
 
 function can_flow_render()
     if current_flow_state == 1 then
@@ -1319,7 +1421,7 @@ function flow_1_update()
     end
 
     if flow_states[current_flow_state].frametime > 270 then
-        --Reached the end of flow 1
+        --reached the end of flow 1
         flow_states[current_flow_state].stage += 1
     end
 end
@@ -1328,7 +1430,7 @@ function flow_1_exit()
 end
 
 function flow_2_init()
-    -- As we can skip the intro on a death, init ambience if done so
+    -- as we can skip the intro on a death, init ambience if done so
     flow_init_ambience(true)
 
 
@@ -1341,10 +1443,16 @@ function flow_2_init()
 end
 function flow_2_update()
 
-    -- Unlocking the bedroom door when getting near
+    -- unlocking the bedroom door when getting near
     if not f1_bedroom_door.triggered then
         if (dist(pl.x,pl.y, 72,281) < 16) f1_bedroom_door.triggered = true
     end
+
+    -- we're done on this stage once we've fused up the first generator
+    if f1_generator.triggered then
+        flow_states[current_flow_state].stage += 1
+    end
+
 end
 function flow_2_exit()
 
@@ -1356,30 +1464,49 @@ end
 function flow_3_init()
     
     -- 2nd to 1st floor
-    add_teleporter(25,19, 27,19,  26,43, false)
+    add_teleporter(25,19, 27,19,  31,43, false)
 
     -- 1st to 2nd floor
-    add_teleporter(30,45, 32,45,  75,19, false)
+    add_teleporter(30,45, 32,45,  26,17, false)
 	
-    -- 1st to ground floor
-    add_teleporter(25,44, 27,44,  31,42, true, true, "i needed to find that battery on the floor above_._._.")
+    -- 1st to ground floor BLOCKER
+    add_teleporter(25,44, 27,44,  26,42, true, true, "i needed to find that battery on the floor above_._._.")
 
 end
 function flow_3_update()
 
+    -- We're done when we have the fuel
+    if f2_construction_fuel_cupboard.triggered then
+        flow_states[current_flow_state].stage += 1
+    end
+
 end
 function flow_3_exit()
 
+    -- remove ground blocking to change the text
+    remove_teleporter(25,44)
 end
 
 function flow_4_init()
     
+    -- 1st to ground floor BLOCKER
+    add_teleporter(25,44, 27,44,  26,42, true, true, "i have the fuel, need to put it on the generators up here_._._.")
+
+    f1_generator.triggered = false
+
 end
 function flow_4_update()
 
+    
+    -- We're done when we have the fuel in both generators
+    if f1_generator.triggered and f2_generator.triggered then
+        flow_states[current_flow_state].stage += 1
+    end
+
 end
 function flow_4_exit()
-
+    -- remove the ground blocker
+    remove_teleporter(25,44)
 end
 
 function flow_5_init()
@@ -1390,7 +1517,7 @@ function flow_5_update()
 end
 function flow_5_exit()
 
-    -- Remove ground blocking
+    -- remove ground blocking
     remove_teleporter(25,44)
     
 end
@@ -1398,7 +1525,7 @@ end
 function flow_6_init()
     
     -- 1st to ground floor
-    add_teleporter(25,44, 27,44,  26,17, false)
+    add_teleporter(25,44, 27,44,  75,19, false)
 
     -- ground to 1st floor
     add_teleporter(74,21, 76,21,  31,43, false)
@@ -1431,7 +1558,8 @@ end
 function add_flow_state(init,update,exit)
     local f = {}
 
-    f.stage = 0
+    f.stage = 0 -- external stage - init, update, exit
+    f.stage_internal = 0 -- for internal stage pacing
 
     f.func_init = init
     f.func_update = update
@@ -2062,9 +2190,9 @@ __sfx__
 00090000086100c61011620166201a6401e66025670226701e6701e6701767014660126601165010650106500e6500d6400b6400a640086300663006630066200662005610036100261002610016100161001610
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-010400001a41600015000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0108002018116101150000000000000000000000000000000c300000000000000000000000000000000000000e116001150000000000000000000000000000000c30000000000000000000000000000000000000
-010600002161600615000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+010400001a44600035000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0108002018146101450000000000000000000000000000000c300000000000000000000000000000000000000e146001450000000000000000000000000000000c30000000000000000000000000000000000000
+010600002164600635000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 010600001027403571102710e5710c27503100101000f100100000f000100000f000100000f000100000f00000000000000000000000000000000000000000000000000000000000000000000000000000000000
 010800003465635643356273561135611356150000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 010c00003462437632376222f61530600356003560000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
