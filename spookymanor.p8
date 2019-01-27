@@ -162,6 +162,9 @@ function _update()
     else
         process_teleporting()
     end
+		
+	local floor = get_pl_floor()
+	g_light_level = g_generators[floor]:get_lightlevel()
 
     g_frame += 1
 end
@@ -315,7 +318,7 @@ function set_light_level(lv)
 	g_light_level = lv or g_light_default	
 end
 
-function draw_light_level()
+function draw_light_level()	
 	set_pal( light_lv_pals[g_light_level] )
 end
 function add_lightning(duration, intensity)
@@ -538,6 +541,22 @@ function pl_move()
     if not g_drawing_text then
 	    if (pl.use or pl.attack) actor_action(pl, pl.attack)
     end
+end
+
+function get_pl_floor()
+	if pl.x < 376 then 
+		if pl.y < 208 then
+			return 2
+		else 
+			return 1
+		end		
+	else
+		if pl.y < 208 then
+			return 0
+		end
+	end
+	
+	return -1
 end
 
 --- ########################################################################
@@ -1209,6 +1228,20 @@ function add_generator(area, floor,	 x, y)
 	
 	function generator:switch()
 		self.light = self.power_level > 0 and not self.light 		
+	end
+	
+	function generator:get_lightlevel()
+		local power = self.power_level
+		if power > 0  then
+			if power < 20 then
+				local rndlv = flr( rnd( g_light_default + power / 2) )
+				if( rnd > g_light_default ) rndlv = g_light_default				
+				return rndlv
+			else 
+				return g_light_default
+			end
+		end	
+		return 1
 	end
 	
 	g_generators[floor] = generator
