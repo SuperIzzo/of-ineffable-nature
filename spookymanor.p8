@@ -27,6 +27,8 @@ g_text_is_diary = false
 
 g_draw_before_player = false
 
+g_music_playing = true
+
 camera_x = 0
 camera_y = 0
 
@@ -50,20 +52,33 @@ function _init()
 
     add_game_maps()
     add_teleporters()
+    init_channel_two_sfx()
 
     mon = add_actor(38,328,1)
 
-    -- play rain loop
-    sfx(0, 3)
+    -- play rain loop, has the 3rd channel
+    sfx(0, 2)
 
-    -- music has the two middle channels
-    music(0, 0, 12)
+    -- music has the 4th channel
+    music(0, 0, 8)
 end
 
 function _update()
-
+    
     if pl.health <= 0 then
         g_player_died = true
+    else
+        if g_music_playing then 
+            if current_sfx == sfx_enemy_close or current_sfx == sfx_enemy_very_close then
+                music(-1, 500, 8)
+                g_music_playing = false
+            end
+        else
+            if current_sfx != sfx_enemy_close and current_sfx != sfx_enemy_very_close then
+                music(0, 500, 8)
+                g_music_playing = true
+            end
+        end
     end
 
     if g_player_died then
@@ -71,7 +86,8 @@ function _update()
             g_died_init = true
             
             -- stop the rain, start the dead sound
-            sfx(-1, 3)
+            sfx(-1, 2)
+            stop_sfx()
             music(-1, 300)
 
             sfx(15)
@@ -220,6 +236,63 @@ function _draw()
 
    --print("fps "..stat(7) ,camera_x + 100,camera_y,7)
 end
+
+-- ########################################################################
+--                          sfx functions     start
+-- ########################################################################
+
+-- these are sfx for channel 2, as channel 1 is a first come first serve sfx channel
+
+sfx_pool = {}
+current_sfx = -1
+
+function add_sfx_to_pool(snd, p)
+    local s = {}
+    s.snd = snd
+    s.priority = p
+    s.channel = 1
+    add(sfx_pool, s)
+
+    return #sfx_pool
+end
+
+function play_sfx(idx, ent)
+    if (current_sfx != -1 and sfx_pool[current_sfx].ent and sfx_pool[current_sfx].ent != ent) return
+
+    if current_sfx == -1 or (sfx_pool[idx].priority >= sfx_pool[current_sfx].priority and sfx_pool[idx].snd != sfx_pool[current_sfx].snd) then
+        sfx(-1,1)
+        sfx(sfx_pool[idx].snd, 1)
+
+        if (ent) sfx_pool[idx].ent = ent
+        current_sfx = idx
+    end
+end
+
+function stop_sfx(idx, ent)
+
+    if (idx and current_sfx != -1 and idx != current_sfx) return
+    if (ent and current_sfx != -1 and sfx_pool[idx].ent and sfx_pool[idx].ent != ent) return
+
+    current_sfx = -1
+    sfx(-1,1)
+end
+
+-- sounds that can use channel 2 for looping sounds
+function init_channel_two_sfx()
+
+    -- critical one shot sounds
+    
+
+    -- looping sounds
+    
+    sfx_enemy_very_close = add_sfx_to_pool(16, 0)
+    sfx_enemy_close = add_sfx_to_pool(17, 0)
+
+    sfx_generator_hum = add_sfx_to_pool(19, 4)
+    sfx_tick_tock = add_sfx_to_pool(9, 5)
+
+end
+
 
 -- ########################################################################
 --                          player functions     start
@@ -390,6 +463,8 @@ function add_actor(x,y,at)
 
     a.health = 100
 
+    a.attacktimer = 0
+
     a.insamemapasplayer = false
 
     a.anim = { }
@@ -479,38 +554,82 @@ function math_lerp(a,b,t)
     return a + t * (b - a)
 end
 
+function process_actor_ai(a)
+    
+    local distance = dist(a.x, a.y, pl.x, pl.y)
+    
+    -- very simple follow because ghost - maybe change the dist to a los check
+    if not a.attack and (a.insamemapasplayer or distance < 32) then
+
+        local x = 0
+        local y = 0
+
+        -- send in the direction to move to get to the player. gate behind
+        --  abs 0.2 check to fix flickering when on the same axis
+        if abs(pl.x - a.x) > 0.2 then
+            if  pl.x - a.x > 0 then
+                x = 1
+            elseif pl.x - a.x < 0 then
+                x = -1
+            end
+        end
+
+        if abs(pl.y - a.y) > 0.2 then
+            if pl.y - a.y > 0 then
+                y = 1
+            elseif pl.y - a.y < 0 then
+                y = -1
+            end
+        end
+
+        add_force_to_actor(a, x, y)
+    end
+    
+    if a.insamemapasplayer and distance < 72 and distance >= 24 then
+        play_sfx(sfx_enemy_close, a)
+    elseif a.insamemapasplayer and distance < 24 then
+        play_sfx(sfx_enemy_very_close, a)
+    else
+        stop_sfx(sfx_enemy_very_close, a)
+        stop_sfx(sfx_enemy_close, a)
+    end
+
+    if distance < 8 then
+        if not a.attack then 
+            a.dx = 0
+            a.dy = 0
+            a.attack = true
+            sfx(22, 0)
+        end
+    end
+
+    if a.attack then
+        if (a.attacktimer < 42) a.attacktimer += 1 return
+        a.attacktimer = 0
+
+        if distance < 8 then
+            pl.health -= 20
+            sfx(-1, 0)
+            sfx(11, 0)
+            
+            --todo screen pal change for red?
+        end
+
+        a.attack = false
+    else
+
+    end
+
+
+
+end
+
 function update_actor(a)
 
     if a.isplayer then 
         pl_move(a)
     else
-        -- very simple follow because ghost - maybe change the dist to a los check
-        if a.insamemapasplayer or dist(a.x, a.y, pl.x, pl.y) < 32 then
-
-            local x = 0
-            local y = 0
-
-            -- send in the direction to move to get to the player. gate behind
-            --  abs 0.2 check to fix flickering when on the same axis
-            if abs(pl.x - a.x) > 0.2 then
-                if  pl.x - a.x > 0 then
-                    x = 1
-                elseif pl.x - a.x < 0 then
-                    x = -1
-                end
-            end
-
-            if abs(pl.y - a.y) > 0.2 then
-                if pl.y - a.y > 0 then
-                    y = 1
-                elseif pl.y - a.y < 0 then
-                    y = -1
-                end
-            end
-
-            add_force_to_actor(a, x, y)
-
-        end
+        process_actor_ai(a)
     end
 
     -- convert to world from cell, divide by 8 (due to 1 map cell being 8x8)
@@ -569,17 +688,25 @@ function draw_actor(a, drawn_areas, drawplayer)
     -- if we have a custom bg colour, stop it drawing
     if (a.tcol != 0) palt(a.tcol, true)
 
+    local top_offset = 8
+    local height = 1.0
+
+    if a.attacktimer > 0 then
+        height -= a.attacktimer / 200
+        top_offset *= height
+    end
+    
     -- upper
     local frame = a.anim[dir-1][a.frame]
 	local flip = false
 	if (frame < 0) frame = -frame   flip = true
-    spr(frame,     a.x,    a.y - 8,    1.0,    1.0, flip)
+    spr(frame,     a.x,    a.y - top_offset,    1.0,    height, flip)
     
     -- lower
 	frame = a.anim[dir][a.frame]
 	flip = false
 	if (frame < 0) frame = -frame    flip = true
-    spr(frame,       a.x,    a.y,        1.0,    1.0, flip)
+    spr(frame,       a.x,    a.y,        1.0,    height, flip)
 
     -- then reenable it to draw
     if (a.tcol != 0) palt(a.tcol, false)
@@ -806,13 +933,6 @@ function add_area_f1_corridor()
 	add_ent(area,	23,	38,		s_photo2)
 	add_ent(area,	36,	38,		s_photo1)
 	
-	add_ent(area,	12,	40,		s_gfclock)
-	
-	add_ent(area,	13,	40,		s_plant)
-	add_ent(area,	17,	40,		s_plant)
-	add_ent(area,	21,	40,		s_plant)
-	add_ent(area,	26,	40,		s_plant)
-	add_ent(area,	31,	40,		s_plant)
 	
 	return area
 end
@@ -883,13 +1003,6 @@ function add_game_maps()
     add_map_link(f1_storage, f1_corridor)
     add_map_link(f1_spare_bedroom, f1_corridor)
     add_map_link(f1_stairs, f1_corridor)
-    
-    add_map_link(f1_corridor, f1_bathroom)
-    add_map_link(f1_corridor, f1_library)
-    add_map_link(f1_corridor, f1_storage)
-    add_map_link(f1_corridor, f1_spare_bedroom)
-    add_map_link(f1_corridor, f1_stairs)
-    add_map_link(f1_corridor, f1_main_bedroom)
 		
 	
 	-- second floor
@@ -992,8 +1105,10 @@ function process_teleporting()
         camera_x = pl.x - 64
         camera_y = pl.y - 64
 
-        pl.dx = 0
-        pl.dy = 0
+        for a in all(actors) do
+            a.dx = 0
+            a.dy = 0
+        end
 
         pl.frame = 1
         
@@ -1007,7 +1122,6 @@ end
 
 function draw_teleport_warp()
     if fade_screen_y <= 127 and fade_screen_y >= 0 then
-        
         
         if (fade_screen_frame_time < 1) fade_screen_frame_time+=1 return
 
@@ -1499,18 +1613,19 @@ __sfx__
 010400001a41600015000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0108002018116101150000000000000000000000000000000c300000000000000000000000000000000000000e116001150000000000000000000000000000000c30000000000000000000000000000000000000
 010600002161600615000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-010600001021403511102110e5110c21503100101000f100100000f000100000f000100000f000100000f00000000000000000000000000000000000000000000000000000000000000000000000000000000000
+010600001027403571102710e5710c27503100101000f100100000f000100000f000100000f000100000f00000000000000000000000000000000000000000000000000000000000000000000000000000000000
 010800003465635643356273561135611356150000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 010c00003462437632376222f61530600356003560000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 010800000063600643006350000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0110000010252000000e1520c15200000000000015200002000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 011000201171413711116241372111721137211161413731157441363415741137511575113751156141376111764137611176113614117511362411741137411061411731107311172110721116141071111711
-011d0008007120071200712007120071200712007120c716000000000000000000000000000000000000000000000000000000000000000000e00010000120000f000307002f4002130013400392001510000000
+011d0008007320073200732007320073200732007320c736000000000000000000000000000000000000000000000000000000000000000000e00010000120000f000307002f4002130013400392001510000000
 011a00200415300000000000000000000001330000000000000000214300000000000000000000000000312300000051330000000000001130000000000000000000000000031430000000000000000013300000
 012000100071400711007110071100711007110071100711027110271102711027110271102711027110c7010c7010c7010c7000c1020c1020c1000e1000e1000e10013100141001410013100131000000000000
 01100008007150060502715006000071500600027150000009700000000a700000000b700000000a7000000015700000000000000000000000000000000000000000000000000000000000000000000000000000
 010800001705500005160550000515055000051405500005130550000512055000051105500005100550d0050f0550f0050e055110050c0550d0050b0550f0050a05511005090551300508055150050705207055
+010c00000c5340d5340e5440f54410554115541256413564145741557416574175741700018666186630000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __music__
-02 43040343
+02 43444304
 02 43424344
 
