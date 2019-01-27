@@ -853,6 +853,35 @@ function update_ent(e)
     end
 end
 
+
+s_chair 					= 109
+s_table 					= 77
+s_small_table 		= 93
+s_shelf_top 			= 108
+s_mirror					= 107
+s_bookshelf			= 124
+s_cupboard				= 125
+s_safe						= 125
+s_baththub				= 121
+s_shower				= 105
+s_clock 					= 79
+s_gfclock_bot			= 95
+s_gfclock					= {s_gfclock_bot,s_clock}
+s_door_top 				= 73
+s_door_bot				= 89
+s_door_boards		= 72
+s_door						=	{s_door_bot ,s_door_top}
+s_plant					= 127
+s_photo1					= 78
+s_photo2					= 94
+s_sink						= 122
+s_toilet_back			= 122
+s_wall_brown  		= 82
+s_wall_bath  			= 67
+s_wall_stripe			= 80
+s_wall_gray			= 84
+
+
 -- ########################################################################
 --                          special entity functions     start
 -- ########################################################################
@@ -865,12 +894,32 @@ function add_door( area, x,y, spwall, boarded)
 
 	local door = add_ent(area, x,y, s_door)
     door.type = 2
+	door.boarded = boarded
 	
     add_ent_for_draw_order(ceil, door.y)
     add_ent_for_draw_order(ceil2, door.y)
 
 	return door
 end
+
+function draw_door(door)
+	pal(1,2)	
+	
+	if door.open then
+		pal(2,0)	pal(4,0)	pal(13,0)
+	end
+	
+	spr(s_door_bot, door.x, door.y, 1,1, door.fliph, door.flipv)
+	spr(s_door_top, door.x, door.y-8, 1,1, door.fliph, door.flipv)
+	
+	pal(1,1) pal(2,2) pal(4,4) pal(13,13)
+	
+	if door.boarded then
+		spr(s_door_boards, door.x, door.y, 1,1, door.fliph, door.flipv)
+	end
+end
+
+s_door = draw_door
 
 -- ########################################################################
 --                          area mapping functions     start
@@ -927,32 +976,6 @@ function draw_map_area(m)
     foreach(m.entities, draw_ent)
 end
 
-
-s_chair 			= 109
-s_table 			= 77
-s_small_table = 93
-s_shelf_top 	= 108
-s_mirror			= 107
-s_bookshelf	= 124
-s_cupboard		= 125
-s_safe				= 125
-s_baththub		= 121
-s_shower		= 105
-s_clock 			= 79
-s_gfclock_bot	= 95
-s_gfclock			= {s_gfclock_bot,s_clock}
-s_door_top 		= 73
-s_door_bot		= 89
-s_door				=	{s_door_bot ,s_door_top}
-s_plant			= 127
-s_photo1			= 78
-s_photo2			= 94
-s_sink				= 122
-s_toilet_back	= 122
-s_wall_brown  = 82
-s_wall_bath  	= 67
-s_wall_stripe	= 80
-s_wall_gray	= 84
 
 function add_area_f1_main_bedroom()
 	local area = add_map_area(   0,27,13,39,     0,27,13,36)	 
