@@ -243,6 +243,7 @@ function _draw()
         print("game over", camera_x+48, camera_y+64, 7)
     end
 
+	draw_light_level()
 	draw_lightnings()
 	
     local cx = (pl.x / 8)
@@ -283,7 +284,10 @@ function set_pal(p)
 end
 
 function set_light_level(lv)
-	g_light_level = lv or g_light_default
+	g_light_level = lv or g_light_default	
+end
+
+function draw_light_level()
 	set_pal( light_lv_pals[g_light_level] )
 end
 
