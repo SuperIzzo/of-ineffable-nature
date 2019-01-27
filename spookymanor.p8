@@ -1471,7 +1471,7 @@ function add_game_maps()
 	local f0_entrance			= add_map_area(63,6,71,12,    	63,6,71,12)
 	local f0_stairs					= add_map_area(73,20,82,22,    73,20,82,22)
 	local f0_kitchen 				= add_area_f0_kitchen()
-	local f0_livingroom			= add_area_f0_livingroom
+	local f0_livingroom			= add_area_f0_livingroom()
 	local f0_garage				= add_area_f0_garage()
 	local f0_bathroom			= add_map_area(88,5,95,14,    	88,5,95,14)
 	local f0_office					= add_map_area(49,20,65,28,    49,20,65,28)
