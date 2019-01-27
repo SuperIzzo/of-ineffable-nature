@@ -12,6 +12,8 @@ flag_sprite_map_top_layer = 7
 -- base speed for actors to move at
 g_speed_accel = 1
 
+g_generators = {}
+
 -- how many frames between updating character frames
 g_anim_update_interval = 5
 
@@ -1039,6 +1041,9 @@ function update_ent(e)
 
     if (e.triggered) return
 
+	if(e.tick) e:tick()
+	
+	
     -- collectable - static and drawing until player picks it up
     if e.type == 1 then
         if dist(pl.x,pl.y,e.x,e.y) < 7.5 then 
@@ -1154,6 +1159,19 @@ function draw_door(door)
 end
 
 s_door = draw_door
+
+function add_generator(area, floor,	 x, y)
+	local generator = add_ent(area, x, y,		s_generator)	
+	generator.power_level = 0
+	
+	function generator:tick()
+		if(self.power_level > 0) self.power_level -= 1
+	end
+	
+	g_generators[floor] = generator
+	
+	return generator
+end
 
 -- ########################################################################
 --                          area mapping functions     start
@@ -1300,7 +1318,7 @@ function add_area_f1_storage()
 		return true
 	end
 
-    f1_generator = add_ent(area, 41, 33,		s_generator)
+    f1_generator = add_generator(area, 1,		41, 33)
     add_ent_blocker(f1_generator, f1_fuse_cupboard)
 
     function f1_generator:on_use(actor)
@@ -1354,7 +1372,7 @@ end
 function add_area_f2_construction_b()
     local area = add_map_area(24,4,38,10,    	24,4,38,10)
 
-    f2_generator = add_ent(area, 37, 7,		s_generator)
+    f2_generator = add_generator(area, 2,	 	37, 7)
     add_ent_blocker(f2_generator, f2_construction_fuel_cupboard)
 
     function f2_generator:on_use(actor)
@@ -1408,7 +1426,7 @@ end
 function add_area_f0_livingroom()
 	local area =  add_map_area(49,6,62,14,    	49,6,62,14)
 	
-	f0_generator = add_ent(area, 78, 08,		s_generator)
+	f0_generator = add_generator(area, 0,		78, 08)
 	
 	function f0_generator:on_use(actor)
 		-- do stuff
@@ -1421,7 +1439,7 @@ end
 function add_area_fb_gen_area()
 	local area = add_map_area(49,31,60,39,    49,31,61,39)
 	
-	fb_generator = add_ent(area, 56, 34,		s_generator)
+	fb_generator = add_generator(area,  -1,	 56, 34)
 	
 	function fb_generator:on_use(actor)
 		-- do stuff
