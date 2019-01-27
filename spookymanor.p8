@@ -584,10 +584,10 @@ function process_actor_ai(a)
 
         add_force_to_actor(a, x, y)
     end
-
-    if distance < 72 and distance >= 24 then
+    
+    if a.insamemapasplayer and distance < 72 and distance >= 24 then
         play_sfx(sfx_enemy_close, a)
-    elseif distance < 24 then
+    elseif a.insamemapasplayer and distance < 24 then
         play_sfx(sfx_enemy_very_close, a)
     else
         stop_sfx(sfx_enemy_very_close, a)
@@ -914,13 +914,6 @@ function add_area_f1_corridor()
 	add_ent(area,	23,	38,		s_photo2)
 	add_ent(area,	36,	38,		s_photo1)
 	
-	add_ent(area,	12,	40,		s_gfclock)
-	
-	add_ent(area,	13,	40,		s_plant)
-	add_ent(area,	17,	40,		s_plant)
-	add_ent(area,	21,	40,		s_plant)
-	add_ent(area,	26,	40,		s_plant)
-	add_ent(area,	31,	40,		s_plant)
 	
 	return area
 end
@@ -983,21 +976,14 @@ function add_game_maps()
 	
 	local f1_bedroom_door = add_ent(f1_corridor, 9,39, s_door)
     f1_bedroom_door.type = 2
-    f1_bedroom_door.triggered = true --todo remove	
-
-    add_map_link(ff_main_bedroom, ff_corridor, ff_bedroom_door)
-    add_map_link(ff_bathroom, ff_corridor)
-    add_map_link(ff_library, ff_corridor)
-    add_map_link(ff_storage, ff_corridor)
-    add_map_link(ff_spare_bedroom, ff_corridor)
-    add_map_link(ff_stairs, ff_corridor)
+    --f1_bedroom_door.triggered = true --todo remove
     
-    add_map_link(f1_corridor, f1_bathroom)
-    add_map_link(f1_corridor, f1_library)
-    add_map_link(f1_corridor, f1_storage)
-    add_map_link(f1_corridor, f1_spare_bedroom)
-    add_map_link(f1_corridor, f1_stairs)
-    add_map_link(f1_corridor, f1_main_bedroom)
+    add_map_link(f1_main_bedroom, f1_corridor, f1_bedroom_door)
+    add_map_link(f1_bathroom, f1_corridor)
+    add_map_link(f1_library, f1_corridor)
+    add_map_link(f1_storage, f1_corridor)
+    add_map_link(f1_spare_bedroom, f1_corridor)
+    add_map_link(f1_stairs, f1_corridor)
 		
 	
 	-- second floor
