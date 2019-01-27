@@ -1189,8 +1189,15 @@ function add_generator(area, floor,	 x, y)
 	return generator
 end
 
+function draw_switch(switch)
+	local generator = g_generators[switch.floor]
+	local sprite = (switch.on and s_switch_on) or s_switch_off
+	spr(sprite, switch.x, switch.y, 1,1, switch.fliph, switch.flipv)
+end
+
+
 function add_lswitch(area, floor,	 x, y)
-	local lswitch = add_ent(area, x, y,		s_switch)
+	local lswitch = add_ent(area, x, y,		draw_switch)
 	
 	lswitch.floor = floor
 	
@@ -1207,12 +1214,6 @@ function add_lswitch(area, floor,	 x, y)
 	end
 	
 	return lswitch
-end
-
-function draw_switch(switch)
-	local generator = g_generators[switch.floor]
-	local sprite = (switch.on and s_switch_on) or s_switch_off
-	spr(sprite, switch.x, switch.y, 1,1, switch.fliph, switch.flipv)
 end
 
 s_switch = draw_switch
@@ -1517,6 +1518,11 @@ function add_area_fb_gen_area()
 
             text_add("ok_._._.___ everything should be stable now.___ time to find the source of that glass noise.")
             f0_office_door.blocker.block_text = "brunos office_._._.___ this is where the sound came from.____ it's locked though_._._._ i think he left the code in the library safe.___ the library is boarded so i'll need to get an axe from the garage."
+			
+			for gen in all(g_generators) do
+				gen.power_leak = false
+				gen.power_level = 10000
+			end
         end
 		return true
 	end
@@ -1553,6 +1559,8 @@ function add_game_maps()
     add_map_link(f1_spare_bedroom, f1_corridor)
     add_map_link(f1_stairs, f1_corridor)
 	
+	add_lswitch( f1_corridor, 1,		5, 39)
+	add_lswitch( f1_corridor, 1,		30, 39)
 		
 	
 	-- second floor
@@ -1595,6 +1603,10 @@ function add_game_maps()
 	add_map_link(f2_construction_b, f2_construction_a)
 	
 	add_map_link(f2_office, f2_corridor)	
+
+	add_lswitch( f2_corridor, 2,		28, 13)
+	add_lswitch( f2_corridor, 2,		38, 13)
+	add_lswitch( f2_corridor, 2,		3, 13)
 	
 	
 	-- ground floor
@@ -1630,6 +1642,10 @@ function add_game_maps()
 	add_map_link(f0_bathroom, f0_corridor)
 	
 	
+	add_lswitch( f0_livingroom, 	0,		54,  8)
+	add_lswitch( f0_corridor, 		0,		89, 15)
+	add_lswitch( f0_garage, 		0,		79, 7)
+	
 	-- basement
 	local fb_corridor 				= add_map_area(49,40,70,43,    49,39,70,43)
 	local fb_entry 					= add_map_area(61,29,70,39,    60,29,70,39)
@@ -1639,7 +1655,9 @@ function add_game_maps()
 	add_map_link(fb_corridor, fb_entry)
 	add_map_link(fb_gen_area, fb_corridor)
 	add_map_link(fb_corridor, fb_gen_area)
+		
 	
+	add_lswitch( fb_gen_area, 	-1,		58,  33)
 end
 
 function text_for_flow_4_generator_fueled()
