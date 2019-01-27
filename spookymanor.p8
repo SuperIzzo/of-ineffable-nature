@@ -54,10 +54,7 @@ lightning_chance_timer = 0
 -- main entry points
 function _init()
 
-    --pl = add_actor(344,273,0) --pixels
-	pl = add_actor(65*8,16*8,0) --floor 0
-
-    --pl = add_actor(24,256,0) --pixels
+    pl = add_actor(24,256,0) --pixels
     pl.isplayer = true
     
     set_light_level(g_light_default)
@@ -66,13 +63,6 @@ function _init()
     init_channel_two_sfx()
 
     init_flow()
-
-
-    --testing purposes
-    current_flow_state = 6
-    f1_library_safe.triggered = true
-    --flow_2_lightning_finished = true
-    --flow_2_lightning_flashed= true
 
 end
 
@@ -280,20 +270,8 @@ function _draw()
 		draw_lightnings()
 	end
 	
-    
-
-    local cx = (pl.x / 8)
-    local cy = (pl.y / 8) + 0.75
-    --print("world x "..pl.x  ..","..pl.y,camera_x,camera_y+5,7)
-    --print("map x "..cx  ..","..cy,camera_x,camera_y+15,7)
-    --print("s"..current_flow_state.."."..flow_states[current_flow_state].stage ,camera_x + 100,camera_y,7)
-   --print("fps "..stat(7) ,camera_x + 100,camera_y,7)
 end
 
-
--- ########################################################################
---                          light functions     start
--- ########################################################################
 dark0_pal 		= {0,0,0,1,   2,1,1,13,   2,2,4,3,   1,1,1,14}
 dark1_pal 		= {0,0,0,1,   2,1,1,5,      2,2,5,1,   1,1,1,5}
 dark2_pal 		= {0,0,0,0,   2,0,1,5,      2,2,5,1,   1,1,2,5}
@@ -386,9 +364,6 @@ function draw_lightnings()
     if( intensity > g_light_level ) set_pal( light_lv_pals[intensity] );
 end
 
--- ########################################################################
---                          pal effects     start
--- ########################################################################
 g_temp_effect_palette = nil
 
 function create_temp_pal(t)
@@ -414,12 +389,6 @@ function redify_screen()
 	
 	g_temp_effect_palette = palette		
 end
-
--- ########################################################################
---                          sfx functions     start
--- ########################################################################
-
--- these are sfx for channel 2, as channel 1 is a first come first serve sfx channel
 
 sfx_pool = {}
 current_sfx = -1
@@ -563,10 +532,6 @@ function get_pl_floor()
 	return -1
 end
 
---- ########################################################################
---                          actor functions     start
--- ########################################################################
-
 function setup_pl_anims(a)
     -- right, down, left, and up consist of 4 frames
     a.anim_sz = { 4, 4, 4, 4 }
@@ -580,16 +545,6 @@ function setup_pl_anims(a)
             a.anim[i][y] = 0
         end
     end
-    
-    -- walk loop frames alternate so save disk space: frame 1, frame 2, frame 1, frame 3
-    -- 1 = upper right
-    -- 2 = lower right
-    -- 3 = upper down
-    -- 4 = lower down
-    -- 5 = upper left
-    -- 6 = lower left
-    -- 7 = upper top
-    -- 8 = lower top
 
     -- upper frames - since they're all the same right now
     for i=1,4 do
@@ -637,16 +592,6 @@ function setup_mon_anims(a)
         end
     end
     
-    -- walk loop frames alternate so save disk space: frame 1, frame 2, frame 1, frame 3
-    -- 1 = upper right
-    -- 2 = lower right
-    -- 3 = upper down
-    -- 4 = lower down
-    -- 5 = upper left
-    -- 6 = lower left
-    -- 7 = upper top
-    -- 8 = lower top
-
     -- upper frames - since they're all the same right now
     for i=1,4 do
         a.anim[1][i] = 33   --right
@@ -684,12 +629,14 @@ end
 -- x pos
 -- y pos
 -- actor type: 0 = player
-function add_actor(x,y,at)
+function add_actor(x,y,at, is_boss)
     local a = {}
 
     -- this x and y is world position, in pixels
     a.x = x
     a.y = y
+
+    a.is_boss = is_boss
 
     a.attack = false
     a.use = false
@@ -733,7 +680,7 @@ end
 
 function add_monster_actor(x,y, dir, is_boss)
 
-    local mon = add_actor(x,y,1)
+    local mon = add_actor(x,y,1,is_boss)
 
 
     if (dir) mon.dir = dir
@@ -755,11 +702,6 @@ function add_monster_actor(x,y, dir, is_boss)
 
     return mon
 end
-
--- add movement force to the actor:
--- the actor to add to
--- desired x direction - 0 is still, -1 is left, 1 is right
--- desired y direction - 0 is still, -1 is up, 1 is down
 function add_force_to_actor(a,x,y)
 
     -- todo do we want this here? need to degrade it somehow rather than straight 0?
@@ -816,6 +758,10 @@ function process_actor_ai(a)
     
     local distance = dist(a.x, a.y, pl.x, pl.y)
     
+    if a.is_boss then
+        a.insamemapasplayer = true
+    end
+
     if current_flow_state == 6 and flow_states[current_flow_state].stage_internal != 2 then
         return
     end
@@ -883,11 +829,7 @@ function process_actor_ai(a)
         a.attacktimer = 0
 
         if distance < 12 then
-            if a.is_boss then
-                pl.health -= 10
-            else
-                pl.health -= 20
-            end
+            pl.health -= 20
             sfx(-1, 0)
             sfx(11, 0)
             
@@ -909,7 +851,7 @@ function update_actor(a)
             sfx(11, 0)
 
             if a.is_boss then
-                -- End game baby
+                -- end game baby
                 flow_states[current_flow_state].stage_internal = 3
             end
 
@@ -1004,10 +946,6 @@ function draw_actor(a, drawn_areas, drawplayer)
 
 end
 
--- ########################################################################
---                          entity functions     start
--- ########################################################################
-
 function add_ent_blocker(e, b)
     e.blocker = b
 end
@@ -1096,31 +1034,6 @@ function update_ent(e)
 
 	if(e.tick) e:tick()
 
-    -- old function
-    if (true) return
-
-    if (e.triggered) return	
-	
-	
-    -- collectable - static and drawing until player picks it up
-    if e.type == 1 then
-        if dist(pl.x,pl.y,e.x,e.y) < 7.5 then 
-            e.triggered = true
-            --text_add("collected a key! __it must be my lucky day, __better put on a lottery ticket then i think!_!_!", true)
-            --text_add("this is a journal entry, be kind to me, for as i am a fickle beast that should be handled with responsibility.",true)
-            -- todo sound effect, maybe ptfx?
-        end
-    
-    -- openable door - locked and has collision while blocker is active
-    elseif e.type == 2 then
-        if e.bl and e.bl.triggered then
-            if dist(pl.x,pl.y,e.x,e.y) < 16 then 
-                sfx(14, 0)
-                e.triggered = true
-                e.spr = e.spralt
-            end
-        end
-    end
 end
 
 function action_text(text)
@@ -1162,11 +1075,6 @@ s_wall_brown  		= 82
 s_wall_bath  			= 67
 s_wall_stripe			= 80
 s_wall_gray			= 84
-
-
--- ########################################################################
---                          special entity functions     start
--- ########################################################################
 
 function add_door( area, x,y, spwall, boarded)
 	local ceil = add_ent(area, x,y-1,  {spwall, 119}, false, true)
@@ -1309,15 +1217,6 @@ end
 
 s_switch = draw_switch
 
--- ########################################################################
---                          area mapping functions     start
--- ########################################################################
-
-
--- adds a map area that'll reveal upon the player entering the area
--- minx,miny,maxx,maxy = area the player must be in to show this area.
--- cx,cy = map cell start for this area.
--- cex,cey = end cell x and y to draw to
 function add_map_area(minx,miny,maxx,maxy,cx,cy,cex,cey)
     local a = {}
     a.minx = minx
@@ -1741,20 +1640,7 @@ function add_game_maps()
 	add_map_link(fb_gen_area, fb_corridor)
 	add_map_link(fb_corridor, fb_gen_area)
 	
-	
-	--add_switch( )
-	
-
-    -- this ceiling needs to be added to the corrider, otherwise it shows up in the first flow section
-    --local ff_ceil_two = add_ent(10,0, 119, ff_corridor, true, true)
-    --disable_ent_collision(ff_ceil_two)
-
-    -- ground floor placement
 end
-
--- ########################################################################
---                          flow functions     start
--- ########################################################################
 
 function text_for_flow_4_generator_fueled()
     if f1_generator.triggered and not f2_generator.triggered then
@@ -1937,7 +1823,7 @@ function flow_3_init()
     -- 1st to ground floor blocker
     add_teleporter(25,44, 27,44,  26,42, true, true, "i needed to find that battery on the floor above_._._.")
 
-    firstMonster = add_monster_actor(242, 327, 3)
+    firstmonster = add_monster_actor(242, 327, 3)
 
     add_monster_actor(1, 4, 3)
     add_monster_actor(37, 8, 3)
@@ -1951,7 +1837,7 @@ function flow_3_update()
     end
 
     if not flow_3_monster_surprise_done then
-        if dist(pl.x,pl.y,firstMonster.x,firstMonster.y) < 54 then
+        if dist(pl.x,pl.y,firstmonster.x,firstmonster.y) < 54 then
             flow_3_monster_surprise_done = true
             
             text_add("what the duck is that?!", false, true, true)
@@ -2021,7 +1907,7 @@ function flow_6_init()
 end
 function flow_6_update()
 
-    -- Walk into office
+    -- walk into office
     if flow_states[current_flow_state].stage_internal == 0 then
         if dist(pl.x,pl.y,f0_office_door.x, f0_office_door.y+8) < 8 then
             --start the end "cutscene"
@@ -2030,15 +1916,15 @@ function flow_6_update()
 
             flow_states[current_flow_state].frametime = 0
 
-            g_boss = add_monster_actor(55,25,1, true)
+            g_boss = add_monster_actor(57*8,25*8,3, true)
 
             fset(14, flag_collision, true)
             fset(15, flag_collision, true)
         end
     
-    -- Monologue about what happened
+    -- monologue about what happened
     elseif flow_states[current_flow_state].stage_internal == 1 then
-
+        
         if flow_states[current_flow_state].frametime == 10 then
             text_add("b-__b-__b-__b_lood on the floor?___._._.____._._.____oh no. i remember now___ ... ___why i left___ ... ___and why i came back.", false, true, true)
 
@@ -2055,10 +1941,10 @@ function flow_6_update()
             flow_states[current_flow_state].stage_internal += 1
         end
 
-    -- Boss time!
+    -- boss time!
     elseif flow_states[current_flow_state].stage_internal == 2 then
 
-    -- Boss killed!
+    -- boss killed!
     elseif flow_states[current_flow_state].stage_internal == 3 then
         flow_states[current_flow_state].frametime = 0
         flow_states[current_flow_state].stage_internal += 1
@@ -2069,7 +1955,7 @@ function flow_6_update()
         end
 
         if flow_states[current_flow_state].frametime == 20 then
-            text_add("made in 48 hours for the gLOBAL gAME jAM 2019. thanks for playing and completing our game! we hope you enjoyed it... izzo and jimmu, jimmu and izzo :)", true, false, true)
+            text_add("made in 48 hours for the global game jam 2019. thanks for playing and completing our game! we hope you enjoyed it... izzo and jimmu, jimmu and izzo :)", true, false, true)
             
         end
 
@@ -2140,10 +2026,6 @@ function update_flow()
     end
 
 end
-
--- ########################################################################
---                          teleporter functions     start
--- ########################################################################
 
 teleporters = {}
 
@@ -2248,10 +2130,6 @@ function draw_teleport_warp()
     end
 end
 
--- ########################################################################
---                          physics functions     start
--- ########################################################################
-
 function is_cell_solid(x,y)
     return fget(mget(x,y), flag_collision)
 end
@@ -2282,12 +2160,6 @@ function is_map_solid(x,y,dx,dy)
         cell_y += dy
     end
 
-    -- debug only
-    -- pl.cx = cell_x
-    -- pl.cy = cell_y
-    -- pl.mx = mod_x
-    -- pl.my = mod_y
-    
     -- if we're not moving, we don't need to check
     if dx != 0 or dy != 0 then
 
@@ -2315,10 +2187,7 @@ function is_map_solid(x,y,dx,dy)
         -- if the cell we're moving to is solid, cannot move
         if is_cell_solid(cell_x, cell_y) then
             return true
-        
-        -- annoying issue with clipping into a right side wall and being able to still move upwards
-        --  doing this will check for the next block over from the current if overhanging into that
-        --  column by more than a distance of 0.3
+            
         elseif mod_x >= 0.15 then
             return is_cell_solid(cell_x+1, cell_y)
         end
@@ -2331,10 +2200,6 @@ function dist(ax, ay, bx, by)
 
     return sqrt((x_diff * x_diff) + (y_diff * y_diff))
 end
-
--- ########################################################################
---                          popup text functions     start
--- ########################################################################
 
 text_displayline = 1
 text_displaychar = 1
@@ -2418,8 +2283,6 @@ function text_update()
         text_displaychar += 1
         return
     end
-
-   -- log(""..text_displaying[text_displayline].." <- "..sub(text_queue[1][text_displayline], text_displaychar, text_displaychar))
 
     text_displaying[text_displayline] = text_displaying[text_displayline] ..sub(text_queue[1][text_displayline], text_displaychar, text_displaychar)
 
@@ -2569,17 +2432,7 @@ function text_draw()
 
 end
 
--- ########################################################################
---                          debug/misc functions     start
--- ########################################################################
-
 function wait(a) for i = 1,a do flip() end end
-
-function log(msg)
-    printh(g_frame..": "..msg, "log.txt")
-end
-
-
 
 __gfx__
 00000000eeeeeeee0000000000000000eeeeeeee0000000000000000000000000ffffff0000000000a9aaaa00000000000000000000000004544545411111111
@@ -2631,12 +2484,12 @@ __gfx__
 2222111122115111444244444442444455555555155515555d00000000000000000000d551244425555555555500d0018500d008000000000222222004444440
 2222111122121111444244444442444455555555111111115d00000000000000000000d552222225111111115d5d5d515d5d5d58000000000000000000444400
 2222111122201111444244444442344455555555555555555d00000000000000000000d505500000555555554444444400000000000000004444444402422420
-2222111122005111444244444442334455555555555555555d0000000dddddd0000000d5505500005555595546ddd55400000000002000004040040404222240
-dddddddddddddddddddddddddddddddd55555555555535555d0000000d0000d0000000d550055000555595554d6ddd5422555555002000004666666404942240
-1111111111111111444444444444444455555555553535555d0000000d0000d0000000d5500ddd00515999554d66ddd42555555500244440466666d404992240
-1111111111111111422222d4422222d455555555533333355d0000000d0000d0000000d550000000515559554dd66dd455555255002444402dddddd204222240
-111111111111111142ddddd442d3d33455555555533135355d0000000d0000d0000000d550000000555595554ddd66d444444444000222206666666604222240
-1111111111111110444444444444444455555555313331335d0000000dddddd0000000d550000000555555554444444445555524000200206333333604444440
+2222111122005111444244444442334455555555555555555d00000000000000000000d5505500005555595546ddd55400000000002000004040040404222240
+dddddddddddddddddddddddddddddddd55555555555535555d00000000000000000000d550055000555595554d6ddd5422555555002000004666666404942240
+1111111111111111444444444444444455555555553535555d00000000000000000000d5500ddd00515999554d66ddd42555555500244440466666d404992240
+1111111111111111422222d4422222d455555555533333355d00000000000000000000d550000000515559554dd66dd455555255002444402dddddd204222240
+111111111111111142ddddd442d3d33455555555533135355d00000000000000000000d550000000555595554ddd66d444444444000222206666666604222240
+1111111111111110444444444444444455555555313331335d00000000000000000000d550000000555555554444444445555524000200206333333604444440
 0000000000000000222222222222222211111111511511515d00000000000000000000d550000000111111111111111145555524000000003333333300444400
 2222222222222222ddd60000666600005dddddd5111151115d00000000000000000000d556666666000000000000000045222224422222243333333300330000
 5222445442424444d666000166660000d5dddd5d151111515d00000000000000000000d56ddddddd066666600000000042222224444444443333333300333000
