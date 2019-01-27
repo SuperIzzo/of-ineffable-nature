@@ -1368,6 +1368,17 @@ function add_game_maps()
 	add_map_link(f0_garage, f0_corridor)
 	add_map_link(f0_garage, f0_entrance)
 	add_map_link(f0_bathroom, f0_corridor)
+	
+	
+	-- basement
+	local fb_corridor 				= add_map_area(49,40,70,43,    49,39,70,43)
+	local fb_entry 					= add_map_area(61,29,70,39,    60,29,70,39)
+	local fb_gen_area 			= add_map_area(49,31,60,39,    49,31,61,39)
+	
+	add_map_link(fb_entry, fb_corridor)
+	add_map_link(fb_corridor, fb_entry)
+	add_map_link(fb_gen_area, fb_corridor)
+	add_map_link(fb_corridor, fb_gen_area)
 
     -- this ceiling needs to be added to the corrider, otherwise it shows up in the first flow section
     --local ff_ceil_two = add_ent(10,0, 119, ff_corridor, true, true)
