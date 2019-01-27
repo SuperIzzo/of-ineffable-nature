@@ -757,6 +757,10 @@ function disable_ent_collision(e)
     e.coll = false
 end
 
+function add_ent_for_draw_order(e, y)
+    e.ovr_y_draw_order = y
+end
+
 -- xy is in cell coords. su and sl are upper and lower sprites, su is optional
 --  m = the map to tie this to. 
 function add_ent(m, x,y,sp,ontop,drawblack,fliph,flipv)
@@ -778,25 +782,36 @@ function add_ent(m, x,y,sp,ontop,drawblack,fliph,flipv)
     e.fliph = fliph
     e.flipv = flipv
 
+    e.ovr_y_draw_order = 0
+
     add(m.entities,e)
 
     return e
 end
 
 function draw_ent(e)
+
     -- once we've "collected" the key, don't want to draw it
     if e.type == 1 then
         if (e.triggered) return
     end
     
+    local order_y = e.y
+
+    if e.ovr_y_draw_order != 0 then
+        order_y = e.ovr_y_draw_order
+    end
+
     -- wait until after the player has drawn if this entity would be on top
     --  or always drawing on top, don't draw before
     if g_draw_before_player then
-        if(e.y > pl.y) return
+        if(order_y > pl.y) return
         if(e.ontop) return
-    elseif not e.ontop then
-        -- then if we drew on bottom don't draw on top
-        if(e.y <= pl.y) return
+    else
+        if not e.ontop then
+            -- then if we drew on bottom don't draw on top
+            if(order_y <= pl.y) return
+        end
     end
 
     if (e.drawblack) palt(0, false)
@@ -844,12 +859,16 @@ end
 
 function add_door( area, x,y, spwall, boarded)
 	local ceil = add_ent(area, x,y-1,  {spwall, 119}, false, true)
+    local ceil2 = add_ent(area, x+8,y-1,  {spwall, 119}, false, true)
     disable_ent_collision(ceil)
-	
+	disable_ent_collision(ceil2)
+
 	local door = add_ent(area, x,y, s_door)
     door.type = 2
-    door.triggered = true --todo remove
 	
+    add_ent_for_draw_order(ceil, door.y)
+    add_ent_for_draw_order(ceil2, door.y)
+
 	return door
 end
 
@@ -1026,14 +1045,14 @@ function add_game_maps()
     local f1_stairs = add_map_area(         24,43,33,46,    24,44,33,46)	
 	
 	-- doors
-	f1_bedroom_door 		    = add_door( f1_corridor, 9,39, 		s_wall_brown)
+	f1_bedroom_door 	    = add_door( f1_corridor, 9,39, 		s_wall_brown)
+    
 	local f1_library_door 		= add_door( f1_corridor, 19,39, 	s_wall_brown, true)
-	local f1_bedroom_door 		= add_door( f1_corridor, 43,39, 	s_wall_brown)
 	
 	local f1_bathroom_door 		= add_door( f1_bathroom, 9,46, 		s_wall_bath)
 	local f1_spareroom_door 	= add_door( f1_spare_bedroom, 43,46,s_wall_stripe)
 
-    --add_map_link(f1_main_bedroom, f1_corridor, f1_bedroom_door)
+    add_map_link(f1_main_bedroom, f1_corridor, f1_bedroom_door)
     add_map_link(f1_bathroom, f1_corridor)
     add_map_link(f1_library, f1_corridor)
     add_map_link(f1_storage, f1_corridor)
@@ -1118,10 +1137,10 @@ function flow_init_ambience()
     ambience_initialised = true
 
     -- play rain loop, has the 3rd channel
-    sfx(0, 2)
+    --sfx(0, 2)
 
     -- music has the 4th channel
-    music(0, 0, 8)
+    --music(0, 0, 8)
 end
 
 function flow_1_init()
