@@ -1237,7 +1237,7 @@ function add_generator(area, floor,	 x, y)
 	
 	function generator:switch()
 		if self.triggered then 
-			self.power_level = 1500
+			self.power_level = 30 * 30
 			self.light = not self.light
 		end
 	end
