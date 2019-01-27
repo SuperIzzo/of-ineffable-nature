@@ -604,18 +604,18 @@ end
 
 -- xy is in cell coords. su and sl are upper and lower sprites, su is optional
 --  m = the map to tie this to. 
-function add_ent(x,y,su,sl,m,ontop,drawblack,fliph,flipv)
+function add_ent(x,y,sp,m,ontop,drawblack,fliph,flipv)
     local e = {}
 
     e.x = (m.cx + x) * 8
     e.y = (m.cy + y) * 8
-    e.spru = su
-    e.sprl = sl
+    e.spr = sp
 
     -- 0 = none, 1 = collectable, 2 = openable door
     e.type = 0
 
-    e.coll = fget(sl, flag_collision)
+	-- enable collision for all entities by default
+    e.coll = true -- fget(sp, flag_collision)
 
     e.triggered = false
     e.ontop = ontop
@@ -645,13 +645,15 @@ function draw_ent(e)
     end
 
     if (e.drawblack) palt(0, false)
-
-    if (e.spru != -1) spr(e.spru,e.x,e.y-8, 1,1, e.fliph, e.flipv)
 	
-	if type(e.sprl) == "function" then
-		e:sprl()
-	else
-		spr(e.sprl,e.x,e.y, 1,1, e.fliph, e.flipv)
+	if type(e.spr) == "number" then
+		spr(e.spr,e.x,e.y, 1,1, e.fliph, e.flipv)
+	elseif type(e.spr) == "table" then 
+		-- can make this a loop instead
+		spr(e.spr[1],e.x,e.y, 1,1, e.fliph, e.flipv)
+		spr(e.spr[2],e.x,e.y-8, 1,1, e.fliph, e.flipv)
+	elseif type(e.spr) == "function" then
+		e:spr()
 	end
 
     if (e.drawblack) palt(0, true)
@@ -736,28 +738,38 @@ function draw_map_area(m)
     foreach(m.entities, draw_ent)
 end
 
-function add_main_bedroom()
+
+s_chair 			= 109
+s_table 			= 77
+s_small_table = 93
+s_shelf_top 	= 108
+s_clock 			= 79
+s_door_top 		= 73
+s_door 			= 89
+
+function add_area_main_bedroom()
 	local area = add_map_area(   0,27,13,39,     0,27,13,36)
-
 	 -- bedroom props - these coords are offset from the cell xy passed into add_map_area
-    -- ceilings above the door
+    -- ceilings above the door    
+
+    add_ent(3,4, 			s_small_table, area)
+
+    add_ent(2,7, 			s_chair, area)
+    add_ent(3,7, 			s_table, area)
+    add_ent(4,7, 			s_chair, area, false, false, true)
     
-
-    add_ent(3,4, -1,93, area) -- bedside table
-
-    add_ent(2,7, -1,109, area) -- table left chair
-    add_ent(3,7, -1,77, area) -- table
-    add_ent(4,7, -1,109, area, false, false, true) -- table right chair
-
-    -- bookcase tops
-    add_ent(6,3, -1,108, area)
-    add_ent(7,2, -1,108, area)
-    add_ent(12,3, -1,108, area)
-
-    add_ent(11, 4, -1,77, area) -- table
-
-    add_ent(2, 2, -1,79, area) -- clock
+    add_ent(6,3, 			s_shelf_top, area)
+    add_ent(7,2, 			s_shelf_top, area)
+    add_ent(12,3, 		s_shelf_top, area)
 	
+    add_ent(11, 4, 		s_table, area)
+    add_ent(2, 2, 		s_clock , area)
+	
+	return area
+end
+
+function add_area_hallway_f2()
+	local area = add_map_area(       0,40,46,42,     0,37,46,43)
 	return area
 end
 
@@ -766,8 +778,8 @@ function add_game_maps()
     -- first floor placement
 
     --    rooms                             player xy       cell xy
-    local ff_main_bedroom = add_main_bedroom()
-    local ff_corridor = add_map_area(       0,40,46,42,     0,37,46,43)
+    local ff_main_bedroom = add_area_main_bedroom()
+    local ff_corridor = add_area_hallway_f2()
     local ff_bathroom = add_map_area(       6,43,16,51,     6,44,16,51)
     local ff_library = add_map_area(        14,30,38,39,    14,30,38,36)
     local ff_storage = add_map_area(        39,30,46,39,    39,30,46,36)
@@ -775,10 +787,10 @@ function add_game_maps()
     local ff_stairs = add_map_area(         24,43,33,46,    24,44,33,46)
 
 	-- corridor props	
-	local ff_ceil_one = add_ent(9,1, 119,82, ff_corridor, false, true)
+	local ff_ceil_one = add_ent(9,1,  {82, 119}, ff_corridor, false, true)
     disable_ent_collision(ff_ceil_one)
 	
-	local ff_bedroom_door = add_ent(9,2, 73,89, ff_corridor)
+	local ff_bedroom_door = add_ent(9,2, {89,73}, ff_corridor)
     ff_bedroom_door.type = 2
     ff_bedroom_door.triggered = true --todo remove
 
@@ -797,7 +809,7 @@ function add_game_maps()
     add_map_link(ff_corridor, ff_main_bedroom)
 
     -- this ceiling needs to be added to the corrider, otherwise it shows up in the first flow section
-    --local ff_ceil_two = add_ent(10,0, -1,119, ff_corridor, true, true)
+    --local ff_ceil_two = add_ent(10,0, 119, ff_corridor, true, true)
     --disable_ent_collision(ff_ceil_two)
 
     -- ground floor placement
