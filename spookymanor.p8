@@ -46,21 +46,20 @@ fade_screen_frame_time = 0
 
 -- main entry points
 function _init()
-    --pl = add_actor(188,54,0)
+
     pl = add_actor(24,256,0) --pixels
     pl.isplayer = true
-
+    
+    
     add_game_maps()
     add_teleporters()
     init_channel_two_sfx()
 
+    init_flow()
+
     mon = add_actor(38,328,1)
 
-    -- play rain loop, has the 3rd channel
-    sfx(0, 2)
-
-    -- music has the 4th channel
-    music(0, 0, 8)
+    
 end
 
 function _update()
@@ -102,6 +101,7 @@ function _update()
 
         if fade_screen_y >= 127 then
             wait(15)
+            printh('nointro', '@clip')
             run()
         end
     end
@@ -229,11 +229,11 @@ function _draw()
         print("game over", camera_x+48, camera_y+64, 7)
     end
 
-    local cx = (pl.x / 8)
-    local cy = (pl.y / 8) + 0.75
+    --local cx = (pl.x / 8)
+   -- local cy = (pl.y / 8) + 0.75
    -- print("world x "..pl.x  ..","..pl.y,camera_x,camera_y+100,7)
     --print("map x "..cx  ..","..cy,camera_x,camera_y+110,7)
-
+    print("s "..current_flow_state ,camera_x + 100,camera_y,7)
    --print("fps "..stat(7) ,camera_x + 100,camera_y,7)
 end
 
@@ -1052,6 +1052,161 @@ function add_game_maps()
     --disable_ent_collision(ff_ceil_two)
 
     -- ground floor placement
+end
+
+-- ########################################################################
+--                          flow functions     start
+-- ########################################################################
+
+flow_states = {}
+current_flow_state = 1
+
+-- 1 = Bedroom wakeup (no player control)
+-- 2 = Go to the storage for a fuse
+
+function flow_init_common()
+
+end
+function flow_update_common()
+
+end
+function flow_exit_common()
+    current_flow_state += 1
+end
+
+ambience_initialised = false
+function flow_init_ambience()
+    
+    if (ambience_initialised) return
+    ambience_initialised = true
+
+    -- play rain loop, has the 3rd channel
+    sfx(0, 2)
+
+    -- music has the 4th channel
+    music(0, 0, 8)
+end
+
+function flow_1_init()
+    flow_init_ambience()
+    
+
+end
+function flow_1_update()
+
+
+    --Reached the end of flow 1
+    flow_states[current_flow_state].stage += 1
+    
+end
+function flow_1_exit()
+
+end
+
+function flow_2_init()
+    -- As we can skip the intro on a death, init ambience if done so
+    flow_init_ambience()
+
+end
+function flow_2_update()
+
+end
+function flow_2_exit()
+
+end
+
+function flow_3_init()
+    
+end
+function flow_3_update()
+
+end
+function flow_3_exit()
+
+end
+
+function flow_4_init()
+    
+end
+function flow_4_update()
+
+end
+function flow_4_exit()
+
+end
+
+function flow_5_init()
+    
+end
+function flow_5_update()
+
+end
+function flow_5_exit()
+
+end
+
+function flow_6_init()
+    
+end
+function flow_6_update()
+
+end
+function flow_6_exit()
+
+end
+
+function flow_7_init()
+    
+end
+function flow_7_update()
+
+end
+function flow_7_exit()
+
+end
+
+function add_flow_state(init,update,exit)
+    local f = {}
+
+    f.stage = 0
+
+    f.func_init = init
+    f.func_update = update
+    f.func_exit = exit
+
+    add(flow_states, f)
+end
+
+
+function init_flow()
+
+    if stat(4) == "nointro" then
+        current_flow_state = 2
+    end
+
+    add_flow_state(flow_1_init, flow_1_update, flow_1_exit)
+    add_flow_state(flow_2_init, flow_2_update, flow_2_exit)
+    add_flow_state(flow_3_init, flow_3_update, flow_3_exit)
+    add_flow_state(flow_4_init, flow_4_update, flow_4_exit)
+    add_flow_state(flow_5_init, flow_5_update, flow_5_exit)
+    add_flow_state(flow_6_init, flow_6_update, flow_6_exit)
+    add_flow_state(flow_7_init, flow_7_update, flow_7_exit)
+
+end
+
+function update_flow()
+
+    if flow_states[current_flow_state].stage == 0 then
+        flow_states[current_flow_state].func_init()
+        flow_init_common()
+    elseif flow_states[current_flow_state].stage == 1 then
+        flow_states[current_flow_state].func_update()
+        flow_update_common()
+    else
+        flow_states[current_flow_state].func_exit()
+        flow_exit_common()
+    end
+
 end
 
 -- ########################################################################
