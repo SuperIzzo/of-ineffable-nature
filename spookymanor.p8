@@ -137,10 +137,10 @@ function _update()
 
         -- loop through areas and show them if need be
         for m in all(areas) do
+			foreach(m.entities, update_ent)
+			
             if cx >= m.minx and cx <= m.maxx and cy >= m.miny and cy <= m.maxy then
-                if(not m.entered) entered_area(m)
-
-                foreach(m.entities, update_ent)
+                if(not m.entered) entered_area(m)                
             else
                 if(m.entered) left_area(m)
             end
@@ -1078,12 +1078,12 @@ end
 
 function update_ent(e)
 
+	if(e.tick) e:tick()
+
     -- old function
     if (true) return
 
-    if (e.triggered) return
-
-	if(e.tick) e:tick()
+    if (e.triggered) return	
 	
 	
     -- collectable - static and drawing until player picks it up
@@ -1218,13 +1218,21 @@ end
 s_door = draw_door
 
 function add_generator(area, floor,	 x, y)
+	local min_lights = { }
+	min_lights[-1] = 1
+	min_lights[0] = 2
+	min_lights[1] = 4
+	min_lights[2] = 3
+	
 	local generator = add_ent(area, x, y,		s_generator)	
 	generator.power_level = 0
+	generator.power_leak = true
+	generator.min_light = min_lights[floor]
 	generator.light = false
-	generator.floor = floor
+	generator.floor = floor	
 	
 	function generator:tick()
-		if(self.power_level > 0) self.power_level -= 1
+		if(self.power_level > 0 and self.power_leak) self.power_level -= 1
 	end
 	
 	function generator:switch()
@@ -1234,15 +1242,16 @@ function add_generator(area, floor,	 x, y)
 	function generator:get_lightlevel()
 		local power = self.power_level
 		if power > 0  then
-			if power < 20 then
-				local rndlv = flr( rnd( g_light_default + power / 2) )
-				if( rnd > g_light_default ) rndlv = g_light_default				
+			if power < 80 then
+				local rndlv = flr( rnd( g_light_default + power / 20 - 2.5)  + power / 20)
+				if( rndlv > g_light_default ) rndlv = g_light_default
+				if( rndlv < self.min_light ) rndlv = self.min_light
 				return rndlv
 			else 
 				return g_light_default
 			end
 		end	
-		return 1
+		return self.min_light
 	end
 	
 	g_generators[floor] = generator
