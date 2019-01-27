@@ -152,6 +152,10 @@ end
 
 function _draw()
 
+	set_light_level(nil)
+	
+	set_light_level(5)
+	
     --clear the screen first
     if not pause_game_for_warp or just_teleported then
         cls()
@@ -243,6 +247,38 @@ function _draw()
     print("map x "..cx  ..","..cy,camera_x,camera_y+15,7)
     print("s"..current_flow_state.."."..flow_states[current_flow_state].stage ,camera_x + 100,camera_y,7)
    --print("fps "..stat(7) ,camera_x + 100,camera_y,7)
+end
+
+
+-- ########################################################################
+--                          light functions     start
+-- ########################################################################
+dark0_pal 		= {0,0,0,1,   2,1,1,13,   2,2,4,3,   1,1,1,14}
+dark1_pal 		= {0,0,0,1,   2,1,1,5,      2,2,5,1,   1,1,1,5}
+dark2_pal 		= {0,0,0,0,   2,0,1,5,      2,2,5,1,   1,1,2,5}
+light2_pal 		= { 5, 6,14, 7,    7, 7, 7, 7,    14, 7, 7, 7,   7, 6, 7,7}
+
+light_lv_pals	= 
+{
+	dark2_pal, dark2_pal, dark1_pal, dark1_pal, 
+	dark0_pal, dark0_pal, nil, nil,
+	nil, nil, nil, nil,
+	nil, light2_pal, light2_pal, light2_pal
+}
+
+g_light_default = 8
+g_light_level = 8
+
+function set_pal(p)
+	for i =0,15 do
+		local c = (p and p[i+1]) or i
+		pal(i,c,1)
+	end
+end
+
+function set_light_level(lv)
+	g_light_level = lv or g_light_default
+	set_pal( light_lv_pals[g_light_level] )
 end
 
 -- ########################################################################
