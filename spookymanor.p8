@@ -114,7 +114,19 @@ function _draw()
         
         for m in all(visible_areas) do
             draw_map_area(m)
-            foreach(m.links, draw_linked_maps)
+
+            if #m.links >= 1 then
+                for lm=1, #m.links do
+                    local draw = true
+
+                    if (m.linkblockers[lm] != nil and not m.linkblockers[lm].triggered) draw = false
+
+                    if draw then
+                        m.links[lm].linkshow = true
+                        draw_map_area(m.links[lm])
+                    end
+                end
+            end
         end
 
         foreach(actors, draw_actor)
@@ -125,7 +137,18 @@ function _draw()
         --  on a lower y axis to the player will be drawing
         for m in all(visible_areas) do
             draw_map_area(m)
-            foreach(m.links, draw_linked_maps)
+            
+            if #m.links >= 1 then
+                for lm=1, #m.links do
+                    local draw = true
+                    if (m.linkblockers[lm] != nil and not m.linkblockers[lm].triggered) draw = false
+                        
+                    if draw then   
+                        m.links[lm].linkshow = true
+                        draw_map_area(m.links[lm])
+                    end
+                end
+            end
         end
         --
         -- map(0,0,0,0,16,16,flag_sprite_map_top_layer)
@@ -439,6 +462,10 @@ function add_ent_alt_sprite(e,s)
     e.spralt = s
 end
 
+function disable_ent_collision(e)
+    e.coll = false
+end
+
 -- xy is in cell coords. su and sl are upper and lower sprites, su is optional
 --  m = the map to tie this to. 
 function add_ent(x,y,su,sl,m,ontop,drawblack,fliph,flipv)
@@ -451,6 +478,8 @@ function add_ent(x,y,su,sl,m,ontop,drawblack,fliph,flipv)
 
     -- 0 = none, 1 = collectable, 2 = openable door
     e.type = 0
+
+    e.coll = fget(sl, flag_collision)
 
     e.triggered = false
     e.ontop = ontop
@@ -537,26 +566,28 @@ function add_map_area(minx,miny,maxx,maxy,cx,cy,cex,cey)
 
     a.entities = {}
     a.links = {}
+    a.linkblockers = {}
 
     add(areas,a)
 
     return a
 end
 
-function add_map_link(s, t)
+function add_map_link(s, t, blocker)
     add(s.links, t)
+    add(s.linkblockers, blocker)
 end
 
 function entered_area(a)
     a.entered = true
     a.show = true
-
+    
 end
 
 function left_area(a)
     a.entered = false
     a.show = false
-
+    
 end
 
 function draw_map_area(m)
@@ -564,25 +595,44 @@ function draw_map_area(m)
     foreach(m.entities, draw_ent)
 end
 
-function draw_linked_maps(m)
-    m.linkshow = true
-    draw_map_area(m)
-end
-
 function add_game_maps()
 
-    -- first floor
+-- FIRST FLOOR PLACEMENT
 
-    --                                      player xy       cell xy
-    local ff_main_bedroom = add_map_area(   0,27,13,36,     0,27,13,36)
-    local ff_corridor = add_map_area(       0,37,46,43,     0,37,46,43)
-    local ff_bathroom = add_map_area(       6,44,16,51,     6,44,16,51)
-    local ff_library = add_map_area(        14,30,38,36,    14,30,38,36)
-    local ff_storage = add_map_area(        39,30,46,36,    39,30,46,36)
-    local ff_spare_bedroom = add_map_area(  38,44,46,50,    38,44,46,50)
-    local ff_stairs = add_map_area(         24,44,33,46,    24,44,33,46)
+    --    ROOMS                             player xy       cell xy
+    local ff_main_bedroom = add_map_area(   0,27,13,39,     0,27,13,36)
+    local ff_corridor = add_map_area(       0,40,46,42,     0,37,46,43)
+    local ff_bathroom = add_map_area(       6,43,16,51,     6,44,16,51)
+    local ff_library = add_map_area(        14,30,38,39,    14,30,38,36)
+    local ff_storage = add_map_area(        39,30,46,39,    39,30,46,36)
+    local ff_spare_bedroom = add_map_area(  38,43,46,50,    38,44,46,50)
+    local ff_stairs = add_map_area(         24,43,33,46,    24,44,33,46)
 
-    add_map_link(ff_main_bedroom, ff_corridor)
+    -- BEDROOM PROPS - these coords are offset from the cell xy passed into add_map_area
+
+    -- ceilings above the door
+    local ff_ceil_one = add_ent(9,10, -1,119, ff_main_bedroom, true, true)
+    disable_ent_collision(ff_ceil_one)
+
+    add_ent(2,4, -1,93, ff_main_bedroom) -- bedside table
+
+    add_ent(2,7, -1,109, ff_main_bedroom) -- table left chair
+    add_ent(3,7, -1,77, ff_main_bedroom) -- table
+    add_ent(4,7, -1,109, ff_main_bedroom, false, false, true) -- table right chair
+
+    -- bookcase tops
+    add_ent(6,3, -1,108, ff_main_bedroom)
+    add_ent(7,2, -1,108, ff_main_bedroom)
+    add_ent(12,3, -1,108, ff_main_bedroom)
+
+    add_ent(11, 4, -1,77, ff_main_bedroom) -- table
+
+    add_ent(2, 2, -1,79, ff_main_bedroom) -- clock
+
+    local ff_bedroom_door = add_ent(9,12, 73,89, ff_main_bedroom)
+    ff_bedroom_door.type = 2
+
+    add_map_link(ff_main_bedroom, ff_corridor, ff_bedroom_door)
     add_map_link(ff_bathroom, ff_corridor)
     add_map_link(ff_library, ff_corridor)
     add_map_link(ff_storage, ff_corridor)
@@ -596,41 +646,21 @@ function add_game_maps()
     add_map_link(ff_corridor, ff_stairs)
     add_map_link(ff_corridor, ff_main_bedroom)
 
-    -- bedroom props - these coords are offset from the cell xy passed into add_map_area
+    -- CORRIDOR PROPS
 
-    -- ceilings above the door
-    add_ent(9,10, -1,119, ff_main_bedroom, true, true)
-    add_ent(10,10, -1,119, ff_main_bedroom, true, true)
-
-    add_ent(2,4, -1,93, ff_main_bedroom) -- Bedside table
-
-    add_ent(2,7, -1,109, ff_main_bedroom) -- table left chair
-    add_ent(3,7, -1,77, ff_main_bedroom) -- table
-    add_ent(4,7, -1,109, ff_main_bedroom, false, false, true) -- table right chair
-
-    local ff_bedroom_door = add_ent(9,12, 73,89, ff_main_bedroom)
-    ff_bedroom_door.type = 2
+    -- This ceiling needs to be added to the corrider, otherwise it shows up in the first flow section
+    local ff_ceil_two = add_ent(10,0, -1,119, ff_corridor, true, true)
+    disable_ent_collision(ff_ceil_two)
 
 
 
-    -- initialise areas that'll show up when you near them
-    --local firstmap = add_map_area(0,0, 18,18, 0,0, 15,15)
 
-    -- bottom right, and keeping a portion when going top right
-    --local secondmap = add_map_area(12,09, 32,32, 10,9, 32,29)
-    --add_map_area(20,02, 29,09, 16,9, 32,16)
-    
-    -- top right
-    --local thirdmap = add_map_area(20,02, 29,11, 20,02, 28,09)
-    --local key = add_ent(3,2,16,thirdmap)
-    
-    --key.type = 1 --make this a collectable
 
-    -- add a door and add the key as a blocker
-    --local door = add_ent(13,8,126,secondmap)
-    --door.type = 2
-    --add_ent_alt_sprite(door,125)
-    --add_ent_blocker(door,key)
+
+
+-- GROUND FLOOR PLACEMENT
+
+
 
 end
 
@@ -780,7 +810,7 @@ function is_map_solid(x,y,dx,dy)
         for m in all(areas) do
             if m.show or m.linkshow then 
                 for e in all(m.entities) do
-                    if e.type != 1 and not e.triggered then
+                    if e.coll and not e.triggered then
                         if e.x / 8 == cell_x and e.y / 8 == cell_y then
                             return true
                         
@@ -1175,9 +1205,9 @@ __map__
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000068744d4d74747474747474747474747f660000000000000000000000000000000000000000006757575757575757670000000000000000000000000000000000000000000000000000000000000000
 0000000077770000777700000000000000000000000000000000000000000000000000000000000000000000000000000067575757575757575757575757575757670000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 677777784b4b76784b4b7677776700000000000000000000000000000000000000000000000000000000000000000000000000004a0000004a00000000004a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-68504f504c4c506c5b4c50505066000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006800000066000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-6860606075756c7d7575616b6c6667777777777777777777777777777777777777777777777767677777777777776700000000000000000000000000000000000000680e0e0e66000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-686e757575757c7c7575754d7d666840404040404040404040404040404040404040404040406668554a55554a456600000000000000677777777777676777777777780e0e0e66000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+685050504c4c50505b4c50505066000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006800000066000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+686060607575507d7575616b506667777777777777777777777777777777777777777777777767677777777777776700000000000000000000000000000000000000680e0e0e66000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+686e757575757c7c757575757d666840404040404040404040404040404040404040404040406668554a55554a456600000000000000677777777777676777777777780e0e0e66000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __music__
 01 03414240
 02 04424344
