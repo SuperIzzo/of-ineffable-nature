@@ -848,8 +848,8 @@ function add_game_maps()
     local f1_library = add_area_f1_library()
     local f1_storage = add_map_area(        39,30,46,39,    39,30,46,36)
     local f1_spare_bedroom = add_map_area(  38,43,46,50,    38,44,46,50)
-    local f1_stairs = add_map_area(         24,43,33,46,    24,44,33,46)
-
+    local f1_stairs = add_map_area(         24,43,33,46,    24,44,33,46)	
+	
 	-- corridor props	
 	local f1_ceil_one = add_ent(f1_corridor, 9,38,  {82, 119}, false, true)
     disable_ent_collision(f1_ceil_one)
@@ -857,6 +857,10 @@ function add_game_maps()
 	local f1_bedroom_door = add_ent(f1_corridor, 9,39, s_door)
     f1_bedroom_door.type = 2
     f1_bedroom_door.triggered = true --todo remove
+	
+	
+	local f2_corridor = add_map_area(        9,11,46,17,    9,11,46,17)
+	
 
     --add_map_link(f1_main_bedroom, f1_corridor, f1_bedroom_door)
     add_map_link(f1_bathroom, f1_corridor)
@@ -903,17 +907,18 @@ end
 
 function add_teleporters()
     
-    -- 3rd to 2nd floor
+    -- 2nd to 1st floor
     add_teleporter(25,19, 27,19,  31,43, false)
 
+    -- 1st to 2nd floor
+    add_teleporter(30,45, 32,45,  75,19, false)
+	
+    -- 1st to ground floor
+    add_teleporter(25,44, 27,44,  26,17, false)
 
-    -- 2nd to 3rd floor
-    add_teleporter(30,45, 32,45,  26,17, false)
-    -- 2nd to ground floor
-    add_teleporter(25,44, 27,44,  75,19, false)
-
-    -- ground to 2rd floor
+    -- ground to 1st floor
     add_teleporter(74,21, 76,21,  26,43, false)
+	
     -- ground to basement floor
     add_teleporter(79,20, 81,20,  68,32, true)
 
