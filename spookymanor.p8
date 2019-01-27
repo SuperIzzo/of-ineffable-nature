@@ -856,11 +856,7 @@ function add_game_maps()
 	
 	local f1_bedroom_door = add_ent(f1_corridor, 9,39, s_door)
     f1_bedroom_door.type = 2
-    f1_bedroom_door.triggered = true --todo remove
-	
-	
-	local f2_corridor = add_map_area(        9,11,46,17,    9,11,46,17)
-	
+    f1_bedroom_door.triggered = true --todo remove	
 
     --add_map_link(f1_main_bedroom, f1_corridor, f1_bedroom_door)
     add_map_link(f1_bathroom, f1_corridor)
@@ -875,6 +871,39 @@ function add_game_maps()
     add_map_link(f1_corridor, f1_spare_bedroom)
     add_map_link(f1_corridor, f1_stairs)
     add_map_link(f1_corridor, f1_main_bedroom)
+		
+	
+	-- second floor
+	local f2_corridor 				= add_map_area(0,11,46,17,    	0,11,46,17)
+	local f2_corridor_anex 	= add_map_area(5,0,8,10,    			5,0,8,10)	
+	local f2_storage 				= add_map_area(0,0,4,4,    			0,0,4,4)
+	local f2_toilet 					= add_map_area(9,0,13,4,    			9,0,13,4)
+	local f2_bedroom1			= add_map_area(0,6,4,10,    			0,6,4,10)
+	local f2_bedroom2			= add_map_area(9,6,13,10,    		9,6,13,10)
+	local f2_livingroom			= add_map_area(6,18,16,24,    	6,18,16,24)
+	local f2_construction_a	= add_map_area(14,4,23,10,    	14,4,23,10)
+	local f2_construction_b	= add_map_area(24,4,38,10,    	24,4,38,10)
+	local f2_peaceroom		= add_map_area(39,4,46,10,    	39,4,46,10)
+	local f2_office					= add_map_area(38,18,46,24,   	38,18,46,24)
+	
+	add_map_link(f2_corridor, f2_corridor_anex)
+	add_map_link(f2_corridor_anex, f2_corridor)
+	
+	-- anex rooms
+	add_map_link(f2_storage, f2_corridor_anex)
+	add_map_link(f2_toilet, f2_corridor_anex)
+	add_map_link(f2_bedroom1, f2_corridor_anex)	
+	add_map_link(f2_bedroom2, f2_corridor_anex)
+	add_map_link(f2_bedroom2, f2_corridor)
+	
+	add_map_link(f2_livingroom, f2_corridor)
+	
+	add_map_link(f2_construction_a, f2_corridor)
+	add_map_link(f2_construction_a, f2_construction_b)
+	add_map_link(f2_construction_b, f2_construction_a)
+	
+	add_map_link(f2_office, f2_corridor)
+	
 
     -- this ceiling needs to be added to the corrider, otherwise it shows up in the first flow section
     --local ff_ceil_two = add_ent(10,0, 119, ff_corridor, true, true)
