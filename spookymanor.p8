@@ -44,18 +44,36 @@ fade_screen_x = 0
 fade_screen_y = 0
 fade_screen_frame_time = 0
 
+g_player_collected_axe = false
+
+lightning_chance = 10
+lightning_chance_timer = 0
+
 -- main entry points
 function _init()
 
-    --mon = add_actor(38,328,1)
-    --pl = add_actor(344,273,0) --pixels
-    pl = add_actor(24,256,0) --pixels
+    pl = add_actor(344,273,0) --test
+
+    --pl = add_actor(24,256,0) --pixels
     pl.isplayer = true
     
+    set_light_level(g_light_default)
+
     add_game_maps()
     init_channel_two_sfx()
 
     init_flow()
+
+
+    --testing purposes
+    flow_2_lightning_finished = true
+    flow_2_lightning_flashed = true
+    
+    
+
+    current_flow_state = 2
+    flow_states[current_flow_state].frametime = 90
+    flow_states[current_flow_state].stage += 1
 
 end
 
@@ -152,13 +170,6 @@ end
 
 function _draw()
 
-	set_light_level(nil)
-	set_light_level(5)
-	
-    if current_flow_state >= 2 and flow_2_lightning_flashed then
-	   -- if( rnd(210) < 1 ) add_lightning( 5 + rnd(10), 12 + rnd(8) )
-	end
-
     --clear the screen first
     if not pause_game_for_warp or just_teleported then
         cls()
@@ -168,6 +179,21 @@ function _draw()
         if not can_flow_render() then
             if (g_drawing_text) draw_lightnings() text_draw() 
             return
+        end
+
+        if not g_player_died and not g_drawing_text and flow_2_lightning_finished then
+            lightning_chance_timer += 1
+
+            if lightning_chance_timer > 120 then
+                lightning_chance_timer = 0
+
+                if rnd(100) < lightning_chance then
+                    lightning_chance = 5 - rnd(10)
+                    do_lightning()
+                else
+                    lightning_chance += (6 + rnd(10))
+                end
+            end
         end
 
         g_draw_before_player = true
@@ -230,9 +256,7 @@ function _draw()
                 end
             end
         end
-        --
-        -- map(0,0,0,0,16,16,flag_sprite_map_top_layer)
-        
+
         if (g_drawing_text) text_draw()
      else
         draw_teleport_warp()
@@ -247,10 +271,12 @@ function _draw()
 	draw_light_level()
 	draw_lightnings()
 	
-    --local cx = (pl.x / 8)
-    --local cy = (pl.y / 8) + 0.75
-    --print("world x "..pl.x  ..","..pl.y,camera_x,camera_y+5,7)
-    --print("map x "..cx  ..","..cy,camera_x,camera_y+15,7)
+    
+
+    local cx = (pl.x / 8)
+    local cy = (pl.y / 8) + 0.75
+    print("world x "..pl.x  ..","..pl.y,camera_x,camera_y+5,7)
+    print("map x "..cx  ..","..cy,camera_x,camera_y+15,7)
     --print("s"..current_flow_state.."."..flow_states[current_flow_state].stage ,camera_x + 100,camera_y,7)
    --print("fps "..stat(7) ,camera_x + 100,camera_y,7)
 end
@@ -275,7 +301,6 @@ light_lv_pals	=
 g_light_default = 8
 g_light_level = 8
 g_lightnings = {}
-g_thunder_timer = 0
 
 function set_pal(p)
 	for i =0,15 do
@@ -291,7 +316,6 @@ end
 function draw_light_level()
 	set_pal( light_lv_pals[g_light_level] )
 end
-
 function add_lightning(duration, intensity)
 	local lightning = {}
 	lightning.intensity = intensity
@@ -300,34 +324,40 @@ function add_lightning(duration, intensity)
 	
 	add(g_lightnings, lightning)
 	
-	if( g_thunder_timer <= 0) g_thunder_timer = duration * 5
-	
 	return lightning
 end
 
+function do_lightning()
+    add_lightning(4, 17)
+    add_lightning(6, 6)
+    add_lightning(8, 15)
+    add_lightning(4, 9)
+    add_lightning(5, 13)
+    add_lightning(7, 6)
+    
+    play_lightning_sfx()
+end
+
+function play_lightning_sfx()
+    local thunders = {1,5}
+    local rnd_idx = flr(rnd(2))+1
+    sfx(thunders[rnd_idx],0)
+end
+
 function draw_lightnings()
-		local intensity = 0
-		for lightning in all(g_lightnings) do			
-			lightning.timer -= 1
-			
-			if (lightning.timer < 0) lightning.timer = 0
-			
-			intensity += lightning.intensity * lightning.timer / lightning.time
-		end
-		
-		if( intensity > 16) intensity = 16		
-		if( intensity <= 0 ) g_lightnings = {}		
-		
-		if g_thunder_timer > 0 then
-			g_thunder_timer -= 1
-			if( g_thunder_timer <=0) then
-				local thunders = {1,5}
-				local rnd_idx = flr(rnd(2))+1
-				sfx(thunders[rnd_idx],0)
-			end
-		end
-		
-		if( intensity > g_light_level ) set_pal( light_lv_pals[intensity] );
+    local intensity = 0
+    for lightning in all(g_lightnings) do			
+        lightning.timer -= 1
+        
+        if (lightning.timer < 0) del(g_lightnings, lightning)
+        
+        intensity += lightning.intensity * lightning.timer / lightning.time
+    end
+    
+    if( intensity > 16) intensity = 16		
+    if( intensity <= 0 ) g_lightnings = {}		
+            
+    if( intensity > g_light_level ) set_pal( light_lv_pals[intensity] );
 end
 
 -- ########################################################################
@@ -392,7 +422,7 @@ end
 -- ########################################################################
 
 function actor_facing_entity(actor, e)
-	local action_dist = 12	
+	local action_dist = 16	
 	if( abs(actor.x - e.x) + abs(actor.x - e.x) > action_dist ) return false
 	if( actor.x < e.x and actor.dir == 3) return false
 	if( actor.x > e.x and actor.dir == 1) return false
@@ -403,7 +433,7 @@ end
 
 function actor_action(actor, attack)
 	for m in all(areas) do
-		if m.show then
+		if m.show or m.linkshow then
 			for e in all(m.entities) do
 				if actor_facing_entity(actor, e) then
 					local result = false
@@ -414,10 +444,19 @@ function actor_action(actor, attack)
 					end
 					if(result) return result;
 				end
-			end			
+			end
 		end
 	end
-	
+
+	for e in all(actors) do
+        if actor_facing_entity(actor, e) then
+            local result = false
+            if attack and e.on_attack then						
+                result = e.on_attack(e)
+            end
+            if(result) return result;
+        end
+    end
 end
 
 function pl_move()
@@ -621,6 +660,30 @@ function add_actor(x,y,at)
     return a
 end
 
+function add_monster_actor(x,y, dir, is_boss)
+
+    local mon = add_actor(x,y,1)
+
+
+    if (dir) mon.dir = dir
+    if (is_boss) mon.health = 250
+
+    function mon:on_attack(actor)
+        
+        -- play hit sound if no lightning
+        if (#g_lightnings == 0) sfx(-1, 0) sfx(10, 0)
+        
+        if g_player_collected_axe then
+            self.health -= 20
+        else
+            self.health -= 5
+        end
+		
+		return true
+	end
+
+end
+
 -- add movement force to the actor:
 -- the actor to add to
 -- desired x direction - 0 is still, -1 is left, 1 is right
@@ -727,10 +790,10 @@ function process_actor_ai(a)
     end
 
     if a.attack then
-        if (a.attacktimer < 42) a.attacktimer += 1 return
+        if (a.attacktimer < 28) a.attacktimer += 1 return
         a.attacktimer = 0
 
-        if distance < 8 then
+        if distance < 12 then
             pl.health -= 20
             sfx(-1, 0)
             sfx(11, 0)
@@ -739,12 +802,7 @@ function process_actor_ai(a)
         end
 
         a.attack = false
-    else
-
     end
-
-
-
 end
 
 function update_actor(a)
@@ -752,6 +810,18 @@ function update_actor(a)
     if a.isplayer then 
         pl_move(a)
     else
+        if a.health <= 0 then
+
+            if (a.attack) sfx(-1, 0)
+            sfx(11, 0)
+
+            stop_sfx(sfx_enemy_very_close, a)
+            stop_sfx(sfx_enemy_close, a)
+
+            del(actors, a)
+            return
+        end
+
         process_actor_ai(a)
     end
 
@@ -1011,10 +1081,10 @@ function add_door( area, x,y, spwall, boarded)
 	
 	function door:on_use(actor)
 		if self.triggered then
-            sfx(14, 0)
+            if (#g_lightnings == 0) sfx(14, 0)
 			self.triggered = false
 		elseif not self.blocker or self.blocker.triggered then
-            sfx(14, 0)
+            if (#g_lightnings == 0) sfx(14, 0)
 			self.triggered = true
 		else 
 			local msg = self.blocker.block_text or 
@@ -1198,7 +1268,7 @@ function add_area_f1_storage()
         if self.blocker then
             if not self.triggered then
                 if self.blocker.triggered then
-                    sfx(8, 0)
+                    if (#g_lightnings == 0) sfx(8, 0)
                     self.triggered = true
                     
                     -- adding fuel
@@ -1227,7 +1297,7 @@ function add_area_f2_construction_a()
     
     function f2_construction_fuel_cupboard:on_use(actor)
         if not self.triggered then
-            sfx(8, 0)
+            if (#g_lightnings == 0) sfx(8, 0)
 			self.triggered = true
             
             text_add("not where i expected it to be but okay.___ now lets finally get those lights back on_._._.___ i should power this floor and the lower floor first.")
@@ -1252,7 +1322,7 @@ function add_area_f2_construction_b()
         if self.blocker then
             if not self.triggered then
                 if self.blocker.triggered then
-                    sfx(8, 0)
+                    if (#g_lightnings == 0) sfx(8, 0)
                     self.triggered = true
 
                     text_for_flow_4_generator_fueled()
@@ -1286,7 +1356,6 @@ function add_game_maps()
     
 	local f1_library_door 		= add_door( f1_corridor, 19,39, 	s_wall_brown, true)
 	local f1_storage_door 	= add_door( f1_corridor, 43,39, 	s_wall_brown)
-	f1_storage_door.triggered = true
 	
 	local f1_bathroom_door 		= add_door( f1_bathroom, 9,46, 		s_wall_bath)
 	local f1_spareroom_door 	= add_door( f1_spare_bedroom, 43,46,s_wall_stripe)
@@ -1402,6 +1471,7 @@ function flow_exit_common()
 end
 
 flow_2_lightning_flashed = false
+flow_2_lightning_finished = false
 
 ambience_initialised = false
 music_initialised = false
@@ -1469,19 +1539,33 @@ function flow_2_update()
         if (dist(pl.x,pl.y, 72,324) < 8) then
             flow_2_lightning_flashed = true
             flow_states[current_flow_state].frametime = 0
-            log("adding lightning")
-            add_lightning(10, 16)
             
+            do_lightning()
+            
+            pl.dx = 0
+            pl.dy = 0
+
+            pl.frame = 1
         end
-    else
-        if flow_states[current_flow_state].frametime == 4 then
-            text_add("aaaaaaaaaaaggggghhhh!", false, true, true)
+    elseif not flow_2_lightning_finished then
+        if flow_states[current_flow_state].frametime == 5 then
+            text_add("aaaaaaaaaaaggggghhhh!", false, true, true, true)
         end
 
-        --if (flow_states[current_flow_state].frametime == 30) g_light_level = 7
-       --if (flow_states[current_flow_state].frametime == 35) g_light_level = 6
-       -- if (flow_states[current_flow_state].frametime == 40) g_light_level = 5
-       -- if (flow_states[current_flow_state].frametime == 45) g_light_level = 4
+        if (flow_states[current_flow_state].frametime == 20) set_light_level(7)
+        if (flow_states[current_flow_state].frametime == 25) set_light_level(6)
+        if (flow_states[current_flow_state].frametime == 30) set_light_level(5)
+        if (flow_states[current_flow_state].frametime == 35) set_light_level(4)
+
+        if (flow_states[current_flow_state].frametime == 50) then
+            text_add("oh just perfect_.__.__._____ of course_._._._lightning just had to go and hit our powerline didn't it.", false, true, true)
+        end
+
+        if (flow_states[current_flow_state].frametime == 60) then
+            text_add("well its lucky i still have generators on each floor for that home renovation.", false, true, true)
+        end
+
+        if (flow_states[current_flow_state].frametime == 90) flow_2_lightning_finished = true
     end
 
 
@@ -1506,13 +1590,15 @@ function flow_3_init()
     -- 1st to 2nd floor
     add_teleporter(30,45, 32,45,  26,17, false)
 	
-    -- 1st to ground floor BLOCKER
+    -- 1st to ground floor blocker
     add_teleporter(25,44, 27,44,  26,42, true, true, "i needed to find that battery on the floor above_._._.")
+
+    add_monster_actor(262, 327, 3)
 
 end
 function flow_3_update()
 
-    -- We're done when we have the fuel
+    -- we're done when we have the fuel
     if f2_construction_fuel_cupboard.triggered then
         flow_states[current_flow_state].stage += 1
     end
@@ -1526,7 +1612,7 @@ end
 
 function flow_4_init()
     
-    -- 1st to ground floor BLOCKER
+    -- 1st to ground floor blocker
     add_teleporter(25,44, 27,44,  26,42, true, true, "i have the fuel, need to put it on the generators up here_._._.")
 
     f1_generator.triggered = false
@@ -1535,7 +1621,7 @@ end
 function flow_4_update()
 
     
-    -- We're done when we have the fuel in both generators
+    -- we're done when we have the fuel in both generators
     if f1_generator.triggered and f2_generator.triggered then
         flow_states[current_flow_state].stage += 1
     end
@@ -1610,9 +1696,9 @@ end
 
 function init_flow()
 
-    --if stat(4) == "nointro" then
+    if stat(4) == "nointro" then
         current_flow_state = 2
-    --end
+    end
 
     add_flow_state(flow_1_init, flow_1_update, flow_1_exit)
     add_flow_state(flow_2_init, flow_2_update, flow_2_exit)
@@ -1924,11 +2010,11 @@ function text_update()
     text_displaychar += 1
     text_actualchar += 1
 
-    sfx(2, 0)
+    if (not g_text_no_sound and #g_lightnings == 0) sfx(2, 0)
     
 end
 
-function text_add(str, diary, dont_wait_at_end, add_flow_frame)
+function text_add(str, diary, dont_wait_at_end, add_flow_frame, mute_sound)
 
     local textlines = {}
 
@@ -1982,6 +2068,7 @@ function text_add(str, diary, dont_wait_at_end, add_flow_frame)
     g_text_wait_at_end = not dont_wait_at_end
     g_drawing_text = true
     g_text_is_diary = diary
+    g_text_no_sound = mute_sound
 
     text_displaytimer = 0
 
@@ -2241,7 +2328,7 @@ __sfx__
 012000100071400711007110071100711007110071100711027110271102711027110271102711027110c7010c7010c7010c7000c1020c1020c1000e1000e1000e10013100141001410013100131000000000000
 01100008007150060502715006000071500600027150000009700000000a700000000b700000000a7000000015700000000000000000000000000000000000000000000000000000000000000000000000000000
 010800001705500005160550000515055000051405500005130550000512055000051105500005100550d0050f0550f0050e055110050c0550d0050b0550f0050a05511005090551300508055150050705207055
-010c00000c5340d5340e5440f54410554115541256413564145741557416574175741700018666186630000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+010800000c5340d5340e5440f54410554115541256413564145741557416574175741700018666186630000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __music__
 02 43444304
 02 43424344
