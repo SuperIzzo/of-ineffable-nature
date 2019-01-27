@@ -154,7 +154,9 @@ function _draw()
 
 	set_light_level(nil)
 	
-	set_light_level(5)
+	set_light_level(5)		
+	
+	if( rnd(10) < 1 ) add_lightning( 10, 16 )
 	
     --clear the screen first
     if not pause_game_for_warp or just_teleported then
@@ -241,6 +243,8 @@ function _draw()
         print("game over", camera_x+48, camera_y+64, 7)
     end
 
+	draw_lightnings()
+	
     local cx = (pl.x / 8)
     local cy = (pl.y / 8) + 0.75
     print("world x "..pl.x  ..","..pl.y,camera_x,camera_y+5,7)
@@ -268,6 +272,7 @@ light_lv_pals	=
 
 g_light_default = 8
 g_light_level = 8
+g_lightnings = {}
 
 function set_pal(p)
 	for i =0,15 do
@@ -279,6 +284,31 @@ end
 function set_light_level(lv)
 	g_light_level = lv or g_light_default
 	set_pal( light_lv_pals[g_light_level] )
+end
+
+function add_lightning(duration, intensity)
+	local lightning = {}
+	lightning.intensity = intensity
+	lightning.time = duration
+	lightning.timer = duration
+	-- play sfx here
+	
+	add(g_lightnings, lightning)
+	return lightning
+end
+
+function draw_lightnings()
+		local intensity = 0
+		for lightning in all(g_lightnings) do			
+			lightning.timer -= 1
+			if(lightning.timer < 0) lightning.timer = 0			
+			intensity += lightning.intensity * lightning.timer / lightning.time
+		end
+		
+		if( intensity > 16) intensity = 16		
+		if( intensity <= 0 ) g_lightnings = {}
+		
+		if( intensity > g_light_level ) set_pal( light_lv_pals[intensity] );
 end
 
 -- ########################################################################
