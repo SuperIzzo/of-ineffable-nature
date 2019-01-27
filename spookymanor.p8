@@ -45,7 +45,7 @@ fade_screen_frame_time = 0
 -- main entry points
 function _init()
     --pl = add_actor(188,54,0)
-    pl = add_actor(16,256,0) --pixels
+    pl = add_actor(24,256,0) --pixels
     pl.isplayer = true
 
     add_game_maps()
@@ -647,7 +647,12 @@ function draw_ent(e)
     if (e.drawblack) palt(0, false)
 
     if (e.spru != -1) spr(e.spru,e.x,e.y-8, 1,1, e.fliph, e.flipv)
-    spr(e.sprl,e.x,e.y, 1,1, e.fliph, e.flipv)
+	
+	if type(e.sprl) == "function" then
+		e:sprl()
+	else
+		spr(e.sprl,e.x,e.y, 1,1, e.fliph, e.flipv)
+	end
 
     if (e.drawblack) palt(0, true)
 end
@@ -731,12 +736,37 @@ function draw_map_area(m)
     foreach(m.entities, draw_ent)
 end
 
+function add_main_bedroom()
+	local area = add_map_area(   0,27,13,39,     0,27,13,36)
+
+	 -- bedroom props - these coords are offset from the cell xy passed into add_map_area
+    -- ceilings above the door
+    
+
+    add_ent(3,4, -1,93, area) -- bedside table
+
+    add_ent(2,7, -1,109, area) -- table left chair
+    add_ent(3,7, -1,77, area) -- table
+    add_ent(4,7, -1,109, area, false, false, true) -- table right chair
+
+    -- bookcase tops
+    add_ent(6,3, -1,108, area)
+    add_ent(7,2, -1,108, area)
+    add_ent(12,3, -1,108, area)
+
+    add_ent(11, 4, -1,77, area) -- table
+
+    add_ent(2, 2, -1,79, area) -- clock
+	
+	return area
+end
+
 function add_game_maps()
 
     -- first floor placement
 
     --    rooms                             player xy       cell xy
-    local ff_main_bedroom = add_map_area(   0,27,13,39,     0,27,13,36)
+    local ff_main_bedroom = add_main_bedroom()
     local ff_corridor = add_map_area(       0,40,46,42,     0,37,46,43)
     local ff_bathroom = add_map_area(       6,43,16,51,     6,44,16,51)
     local ff_library = add_map_area(        14,30,38,39,    14,30,38,36)
@@ -744,32 +774,15 @@ function add_game_maps()
     local ff_spare_bedroom = add_map_area(  38,43,46,50,    38,44,46,50)
     local ff_stairs = add_map_area(         24,43,33,46,    24,44,33,46)
 
-    -- bedroom props - these coords are offset from the cell xy passed into add_map_area
-
-    -- ceilings above the door
-    local ff_ceil_one = add_ent(9,10, -1,119, ff_main_bedroom, true, true)
+	-- corridor props	
+	local ff_ceil_one = add_ent(9,1, 119,82, ff_corridor, false, true)
     disable_ent_collision(ff_ceil_one)
-
-    add_ent(2,4, -1,93, ff_main_bedroom) -- bedside table
-
-    add_ent(2,7, -1,109, ff_main_bedroom) -- table left chair
-    add_ent(3,7, -1,77, ff_main_bedroom) -- table
-    add_ent(4,7, -1,109, ff_main_bedroom, false, false, true) -- table right chair
-
-    -- bookcase tops
-    add_ent(6,3, -1,108, ff_main_bedroom)
-    add_ent(7,2, -1,108, ff_main_bedroom)
-    add_ent(12,3, -1,108, ff_main_bedroom)
-
-    add_ent(11, 4, -1,77, ff_main_bedroom) -- table
-
-    add_ent(2, 2, -1,79, ff_main_bedroom) -- clock
-
-    local ff_bedroom_door = add_ent(9,12, 73,89, ff_main_bedroom)
+	
+	local ff_bedroom_door = add_ent(9,2, 73,89, ff_corridor)
     ff_bedroom_door.type = 2
     ff_bedroom_door.triggered = true --todo remove
 
-    add_map_link(ff_main_bedroom, ff_corridor, ff_bedroom_door)
+    --add_map_link(ff_main_bedroom, ff_corridor, ff_bedroom_door)
     add_map_link(ff_bathroom, ff_corridor)
     add_map_link(ff_library, ff_corridor)
     add_map_link(ff_storage, ff_corridor)
@@ -783,22 +796,11 @@ function add_game_maps()
     add_map_link(ff_corridor, ff_stairs)
     add_map_link(ff_corridor, ff_main_bedroom)
 
-    -- corridor props
-
     -- this ceiling needs to be added to the corrider, otherwise it shows up in the first flow section
-    local ff_ceil_two = add_ent(10,0, -1,119, ff_corridor, true, true)
-    disable_ent_collision(ff_ceil_two)
-
-
-
-
-
-
+    --local ff_ceil_two = add_ent(10,0, -1,119, ff_corridor, true, true)
+    --disable_ent_collision(ff_ceil_two)
 
     -- ground floor placement
-
-
-
 end
 
 -- ########################################################################
@@ -1271,7 +1273,7 @@ dddddddddddddddddddddddddddddddd55555555555535555d0000000d0000d0000000d550055000
 42554225244442240000d66600006666dd5dd5dd511111115d00000000000000000000d5666666660d6666d000666600429133244222222422222222055dd500
 24544254444442420001d66600006666d5dddd5d111511515dddddddddddddddddddddd56666666600000000000660004291232445222224222222220055d000
 422542222444422201116666000066665dddddd5151111115555555555555555555555550dd00000000000000000000044444444444444442000000200000000
-86e757575757575757575757576686c7c7b5c4a4c7c7c7c4a4b5c7c7c7a4a4b5c7c71606f7066686b4b4555555c6660000000000000086555555a455668615a4
+86e7e7575757575757575757576686c7c7b5c4a4c7c7c7c4a4b5c7c7c7a4a4b5c7c71606f7066686b4b4555555c6660000000000000086555555a455668615a4
 050515e0e0e066000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 865757575757575757575757576686c7c7071707c7c7c7f71707c7c7c7171707c7c7d7d4d4d6668646a6170747d7660000000000000086b4b4b4555566861606
 c6160647474766000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -1345,7 +1347,7 @@ __map__
 677777784b4b76784b4b7677776700000000000000000000000000000000000000000000000000000000000000000000000000004a0000004a00000000004a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 685050504c4c50505b4c50505066000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006800000066000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 686060607575607d7575616b606667777777777777777777777777777777777777777777777767677777777777776700000000000000000000000000000000000000680e0e0e66000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-686e757575757c7c757575757d66686c6c4b4b5b6c6c6c4b4a4b6c6c6c5b4a4b6c6c504f51506668554a55554a456600000000000000677777777777676777777777780e0e0e66000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+686e6e7575757c7c757575757d66686c6c4b4b5b6c6c6c4b4a4b6c6c6c5b4a4b6c6c504f51506668554a55554a456600000000000000677777777777676777777777780e0e0e66000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __sfx__
 010400070361003610026100261001610016100261002610066000560005600056000560004600046000360003600036000260002600026000360003600036000360005600056000560006600066000860008604
 01050020176430e63011626146201662400000126341663416630116331762014620136331263011620106230e6100f6100e610106100f6100e6100c6100b6100961007610056100461002610006100061000610
