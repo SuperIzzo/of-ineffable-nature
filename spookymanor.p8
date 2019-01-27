@@ -55,9 +55,9 @@ lightning_chance_timer = 0
 function _init()
 
     --pl = add_actor(344,273,0) --pixels
-	--pl = add_actor(65*8,16*8,0) --floor 0
+	pl = add_actor(65*8,16*8,0) --floor 0
 
-    pl = add_actor(24,256,0) --pixels
+    --pl = add_actor(24,256,0) --pixels
     pl.isplayer = true
     
     set_light_level(g_light_default)
@@ -69,8 +69,8 @@ function _init()
 
 
     --testing purposes
-    --current_flow_state = 6
-    --f1_library_safe.triggered = true
+    current_flow_state = 6
+    f1_library_safe.triggered = true
     --flow_2_lightning_finished = true
     --flow_2_lightning_flashed= true
 
@@ -182,6 +182,9 @@ function _draw()
 
         if not g_player_died and not g_drawing_text and flow_2_lightning_finished then
             lightning_chance_timer += 1
+        
+            if (current_flow_state == 6) lightning_chance_timer += 4
+
 
             if lightning_chance_timer > 120 then
                 lightning_chance_timer = 0
@@ -794,14 +797,18 @@ function process_actor_ai(a)
     
     local distance = dist(a.x, a.y, pl.x, pl.y)
     
-    if not a.insamemapasplayer then
-    if abs(a.x - pl.x) > 32 or abs(a.y - pl.y) > 32 then
-        a.dx = 0
-        a.dy = 0
-        stop_sfx(sfx_enemy_very_close, a)
-        stop_sfx(sfx_enemy_close, a)
+    if current_flow_state == 6 and flow_states[current_flow_state].stage_internal != 2 then
         return
     end
+
+    if not a.insamemapasplayer then
+        if abs(a.x - pl.x) > 32 or abs(a.y - pl.y) > 32 then
+            a.dx = 0
+            a.dy = 0
+            stop_sfx(sfx_enemy_very_close, a)
+            stop_sfx(sfx_enemy_close, a)
+            return
+        end
     end
 
     -- very simple follow because ghost - maybe change the dist to a los check
@@ -857,7 +864,11 @@ function process_actor_ai(a)
         a.attacktimer = 0
 
         if distance < 12 then
-            pl.health -= 20
+            if a.is_boss then
+                pl.health -= 10
+            else
+                pl.health -= 20
+            end
             sfx(-1, 0)
             sfx(11, 0)
             
@@ -877,6 +888,11 @@ function update_actor(a)
 
             if (a.attack) sfx(-1, 0)
             sfx(11, 0)
+
+            if a.is_boss then
+                -- End game baby
+                flow_states[current_flow_state].stage_internal = 3
+            end
 
             stop_sfx(sfx_enemy_very_close, a)
             stop_sfx(sfx_enemy_close, a)
@@ -1155,10 +1171,8 @@ function add_door( area, x,y, spwall, boarded)
             if (#g_lightnings == 0) sfx(14, 0)
 			self.triggered = false
 		elseif not self.blocker or self.blocker.triggered then
-            if (dist(pl.x,pl.y, self.x, self.y) < 12) then
-                if (#g_lightnings == 0) sfx(14, 0)
-                self.triggered = true
-            end
+            if (#g_lightnings == 0) sfx(14, 0)
+            self.triggered = true
 		else 
 			local msg = self.blocker.block_text or 
 			"the door appears to be locked. maybe i can find a key."
@@ -1416,7 +1430,7 @@ function add_area_f1_storage()
                     -- adding fuel
                     if current_flow_state == 4 then
                         text_for_flow_4_generator_fueled()
-
+                        generator.power_level[1] = 300
                     else
                         text_add("sweet!___ h_m_m_m___ doesn't appear to be working__.__.__._____ ah yes, probably needs some fuel. ____ i think there was some upstairs in the room being constructed.")
                     end
@@ -1469,6 +1483,7 @@ function add_area_f2_construction_b()
                     if (#g_lightnings == 0) sfx(8, 0)
                     self.triggered = true
 
+                    generator.power_level[2] = 300
                     text_for_flow_4_generator_fueled()
                 else
                     text_add("i need to find the fuel first_._._.___ should be somewhere around here.")
@@ -1494,6 +1509,7 @@ function add_area_f0_garage()
             if (#g_lightnings == 0) sfx(8, 0)
             g_player_collected_axe = true
             self.triggered = true
+            add_monster_actor(73, 10, 3)
         end
 		return true
 	end
@@ -1543,6 +1559,8 @@ function add_area_fb_gen_area()
             if (#g_lightnings == 0) sfx(8, 0)
             self.triggered = true
             
+            generator.power_level[-1] = 300
+
             text_add("ok_._._.___ everything should be stable now.___ time to find the source of that glass noise.")
             f0_office_door.blocker.block_text = "brunos office_._._.___ this is where the sound came from.____ it's locked though_._._._ i think he left the code in the library safe.___ the library is boarded so i'll need to get an axe from the garage."
         end
@@ -1634,9 +1652,6 @@ function add_game_maps()
 	local f0_bathroom			= add_map_area(88,5,95,14,    	88,5,95,14)
 	local f0_office					= add_map_area(49,20,65,28,    49,20,65,28)
 	
-    --todo blood
-    --add_ent(f0_office,	56,	25,		s_table_back)
-
 	-- doors
 	local f0_livingroom_door 	= add_door( f0_corridor, 	55,15, 			s_wall_brown)
 	f0_garage_door 			= add_door( f0_corridor, 	75,15, 			s_wall_brown)
@@ -1651,7 +1666,7 @@ function add_game_maps()
 	add_map_link(f0_corridor, f0_entrance)
 	add_map_link(f0_entrance, f0_corridor)
 	add_map_link(f0_corridor, f0_stairs)
-	
+
 	add_map_link(f0_livingroom, f0_corridor)
 	add_map_link(f0_livingroom, f0_kitchen)
 	add_map_link(f0_kitchen, f0_livingroom)	
@@ -1714,6 +1729,8 @@ function can_pl_move()
         return (flow_states[current_flow_state].frametime > 270)
     elseif current_flow_state == 2 then
         return (not flow_2_lightning_flashed or flow_states[current_flow_state].frametime > 90)
+    elseif current_flow_state == 6 then
+        return (flow_states[current_flow_state].stage_internal != 1 and flow_states[current_flow_state].stage_internal != 4)
     end
 
     return true
@@ -1860,6 +1877,7 @@ function flow_3_init()
     firstMonster = add_monster_actor(242, 327, 3)
 
     add_monster_actor(1, 4, 3)
+    add_monster_actor(37, 8, 3)
 
 end
 function flow_3_update()
@@ -1919,8 +1937,7 @@ function flow_5_init()
 
     -- basement to ground floor
     add_teleporter(67,30, 69,30,  80,19, false)
-
-    --todo turn lights on for a moment here
+    
 end
 function flow_5_update()
 
@@ -1945,8 +1962,12 @@ function flow_6_update()
     if flow_states[current_flow_state].stage_internal == 0 then
         if dist(pl.x,pl.y,f0_office_door.x, f0_office_door.y+8) < 8 then
             --start the end "cutscene"
-            flow_states[current_flow_state].stage_internal = 1
+            flow_states[current_flow_state].stage_internal += 1
             do_lightning_long()
+
+            flow_states[current_flow_state].frametime = 0
+
+            g_boss = add_monster_actor(55,25,1, true)
 
             fset(14, flag_collision, true)
             fset(15, flag_collision, true)
@@ -1955,6 +1976,43 @@ function flow_6_update()
     -- Monologue about what happened
     elseif flow_states[current_flow_state].stage_internal == 1 then
 
+        if flow_states[current_flow_state].frametime == 10 then
+            text_add("b-__b-__b-__b_lood on the floor?___._._.____._._.____oh no. i remember now___ ... ___why i left___ ... ___and why i came back.", false, true, true)
+
+        elseif flow_states[current_flow_state].frametime == 20 then
+            text_add("bruno.____ my not so loving, abusive husband_._._.______ had broken a wine glass___ ... ___cursed at me to help him pick up the pieces.___ all the while insulting me_._._._", false, true, true)
+
+        elseif flow_states[current_flow_state].frametime == 30 then
+            text_add("a-_after that my vision went red_._._._________ i took some of the glass and defty put it across his throat.____ i'm not sure what came over me__.__.__.", false, true, true)
+        
+        elseif flow_states[current_flow_state].frametime == 40 then
+            text_add("i left for a while after that__.__.__.______ i came back to put this to rest.", false, true, true)
+        
+        elseif flow_states[current_flow_state].frametime >= 50 then
+            flow_states[current_flow_state].stage_internal += 1
+        end
+
+    -- Boss time!
+    elseif flow_states[current_flow_state].stage_internal == 2 then
+
+    -- Boss killed!
+    elseif flow_states[current_flow_state].stage_internal == 3 then
+        flow_states[current_flow_state].frametime = 0
+        flow_states[current_flow_state].stage_internal += 1
+    
+    elseif flow_states[current_flow_state].stage_internal == 4 then
+        if flow_states[current_flow_state].frametime == 15 then
+            text_add("finally__.__.__.__._____ i've laid him to rest.________________", false, true, true)
+        end
+
+        if flow_states[current_flow_state].frametime == 20 then
+            text_add("made in 48 hours for the gLOBAL gAME jAM 2019. thanks for playing and completing our game! we hope you enjoyed it... izzo and jimmu, jimmu and izzo :)", true, false, true)
+            
+        end
+
+        if flow_states[current_flow_state].frametime >= 25 then
+            run()
+        end
 
     end
 
