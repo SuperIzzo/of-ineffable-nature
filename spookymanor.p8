@@ -832,7 +832,7 @@ end
 
 function add_door( area, x,y, spwall, boarded)
 	local ceil = add_ent(area, x,y-1,  {spwall, 119}, false, true)
-    local ceil2 = add_ent(area, x+8,y-1,  {spwall, 119}, false, true)
+    local ceil2 = add_ent(area, x+1,y-1,  {spwall, 119}, true, true)
     disable_ent_collision(ceil)
 	disable_ent_collision(ceil2)
 
@@ -840,7 +840,6 @@ function add_door( area, x,y, spwall, boarded)
     door.type = 2
 	
     add_ent_for_draw_order(ceil, door.y)
-    add_ent_for_draw_order(ceil2, door.y)
 
 	return door
 end
