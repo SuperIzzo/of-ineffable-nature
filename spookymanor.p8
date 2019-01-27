@@ -55,7 +55,7 @@ lightning_chance_timer = 0
 function _init()
 
     --pl = add_actor(344,273,0) --pixels
-	--pl = add_actor(67*8,16*8,0) --floor 0
+	--pl = add_actor(65*8,16*8,0) --floor 0
 
     pl = add_actor(24,256,0) --pixels
     pl.isplayer = true
@@ -69,7 +69,8 @@ function _init()
 
 
     --testing purposes
-    --current_flow_state = 2
+    --current_flow_state = 6
+    --f1_library_safe.triggered = true
     --flow_2_lightning_finished = true
     --flow_2_lightning_flashed= true
 
@@ -1666,6 +1667,9 @@ function add_game_maps()
 	local f0_bathroom			= add_map_area(88,5,95,14,    	88,5,95,14)
 	local f0_office					= add_map_area(49,20,65,28,    49,20,65,28)
 	
+    --todo blood
+    --add_ent(f0_office,	56,	25,		s_table_back)
+
 	-- doors
 	local f0_livingroom_door 	= add_door( f0_corridor, 	55,15, 			s_wall_brown)
 	f0_garage_door 			= add_door( f0_corridor, 	75,15, 			s_wall_brown)
@@ -1888,6 +1892,8 @@ function flow_3_init()
 
     firstMonster = add_monster_actor(242, 327, 3)
 
+    add_monster_actor(1, 4, 3)
+
 end
 function flow_3_update()
 
@@ -1974,6 +1980,9 @@ function flow_6_update()
             --start the end "cutscene"
             flow_states[current_flow_state].stage_internal = 1
             do_lightning_long()
+
+            fset(14, flag_collision, true)
+            fset(15, flag_collision, true)
         end
     
     -- Monologue about what happened
