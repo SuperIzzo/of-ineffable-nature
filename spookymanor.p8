@@ -1236,7 +1236,8 @@ function add_generator(area, floor,	 x, y)
 	end
 	
 	function generator:switch()
-		if self.power_level > 0 then 
+		if self.triggered then 
+			self.power_level = 1500
 			self.light = not self.light
 		end
 	end
@@ -1249,7 +1250,7 @@ function add_generator(area, floor,	 x, y)
 		end
 		
 		if power > 0  then
-			if power < 80 then
+			if power < 50 then
 				local rndlv = flr( rnd( g_light_default + power / 20 - 2.5)  + power / 20)
 				if( rndlv > g_light_default ) rndlv = g_light_default
 				if( rndlv < self.min_light ) rndlv = self.min_light
@@ -1276,7 +1277,7 @@ function add_lswitch(area, floor,	 x, y)
 		
 		self.on = not self.on
 		
-		if	generator.power_level <= 0 then
+		if	not generator.triggered then
 			text_add("lights won't switch. i must power the generator on this floor.")
 		end
 		
@@ -1454,6 +1455,10 @@ function add_area_f1_storage()
     f1_generator = add_generator(area, 1,		41, 33)
     add_ent_blocker(f1_generator, f1_fuse_cupboard)
 
+	f1_generator.light = true
+	f1_generator.power_level = 1000
+	f1_generator.power_leak = false
+	
     function f1_generator:on_use(actor)
 		
         if self.blocker then
@@ -1461,6 +1466,7 @@ function add_area_f1_storage()
                 if self.blocker.triggered then
                     if (#g_lightnings == 0) sfx(8, 0)
                     self.triggered = true
+					self.power_leak = true
                     
                     -- adding fuel
                     if current_flow_state == 4 then
@@ -1629,6 +1635,7 @@ function add_game_maps()
     add_map_link(f1_storage, f1_corridor)
     add_map_link(f1_spare_bedroom, f1_corridor)
     add_map_link(f1_stairs, f1_corridor)
+	
 		
 	
 	-- second floor
@@ -1718,6 +1725,10 @@ function add_game_maps()
 	add_map_link(fb_corridor, fb_entry)
 	add_map_link(fb_gen_area, fb_corridor)
 	add_map_link(fb_corridor, fb_gen_area)
+	
+	
+	--add_switch( )
+	
 
     -- this ceiling needs to be added to the corrider, otherwise it shows up in the first flow section
     --local ff_ceil_two = add_ent(10,0, 119, ff_corridor, true, true)
@@ -1845,11 +1856,14 @@ function flow_2_update()
         if (dist(pl.x,pl.y, 72,281) < 16) f1_bedroom_door.triggered = true
     end
 
-    if not flow_2_lightning_flashed then
+    if not flow_2_lightning_flashed then				
         if (dist(pl.x,pl.y, 72,324) < 8) then
             flow_2_lightning_flashed = true
             flow_states[current_flow_state].frametime = 0
             
+			f1_generator.power_level = 30
+			f1_generator.power_leak = true
+		
             do_lightning()
             
             pl.dx = 0
