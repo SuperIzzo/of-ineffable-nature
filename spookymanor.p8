@@ -52,10 +52,10 @@ lightning_chance_timer = 0
 -- main entry points
 function _init()
 
-    pl = add_actor(344,273,0) --pixels
+    --pl = add_actor(344,273,0) --pixels
 	--pl = add_actor(67*8,16*8,0) --floor 0
 
-    --pl = add_actor(24,256,0) --pixels
+    pl = add_actor(24,256,0) --pixels
     pl.isplayer = true
     
     set_light_level(g_light_default)
@@ -67,7 +67,9 @@ function _init()
 
 
     --testing purposes
-    current_flow_state = 3
+    --current_flow_state = 2
+    --flow_2_lightning_finished = true
+    --flow_2_lightning_flashed= true
 
 end
 
@@ -332,6 +334,23 @@ function do_lightning()
     play_lightning_sfx()
 end
 
+function do_lightning_long()
+    add_lightning(4, 17)
+    add_lightning(6, 6)
+    add_lightning(8, 15)
+    add_lightning(4, 9)
+    add_lightning(5, 13)
+    add_lightning(7, 6)
+    add_lightning(4, 17)
+    add_lightning(6, 6)
+    add_lightning(8, 15)
+    add_lightning(4, 9)
+    add_lightning(5, 13)
+    add_lightning(7, 6)
+    
+    play_lightning_sfx()
+end
+
 function play_lightning_sfx()
     local thunders = {1,5}
     local rnd_idx = flr(rnd(2))+1
@@ -431,8 +450,8 @@ function actor_action(actor, attack)
 			for e in all(m.entities) do
 				if actor_facing_entity(actor, e) then
 					local result = false
-					if attack and e.on_attack then						
-						result = e.on_attack(actor)
+					if attack and e.on_attack then
+						result = e.on_attack(e)
 					elseif e.on_use then
 						result = e.on_use(e, actor)
 					end
@@ -676,6 +695,7 @@ function add_monster_actor(x,y, dir, is_boss)
 		return true
 	end
 
+    return mon
 end
 
 -- add movement force to the actor:
@@ -742,6 +762,8 @@ function process_actor_ai(a)
     if abs(a.x - pl.x) > 32 or abs(a.y - pl.y) > 32 then
         a.dx = 0
         a.dy = 0
+        stop_sfx(sfx_enemy_very_close, a)
+        stop_sfx(sfx_enemy_close, a)
         return
     end
     end
@@ -1081,18 +1103,21 @@ function add_door( area, x,y, spwall, boarded)
 	
 	if boarded then
 		door.blocker = add_ent(area, x,y, s_door_boards)
+        door.blocker.type = 1
 		door.blocker.triggered = false
 		door.blocker.boards = true		
 		door.blocker.block_text = "bruno boarded this room, he didn't want me going there.______if i had an axe i would be able to get in.";
-	end
+    end
 	
 	function door:on_use(actor)
 		if self.triggered then
             if (#g_lightnings == 0) sfx(14, 0)
 			self.triggered = false
 		elseif not self.blocker or self.blocker.triggered then
-            if (#g_lightnings == 0) sfx(14, 0)
-			self.triggered = true
+            if (dist(pl.x,pl.y, self.x, self.y) < 12) then
+                if (#g_lightnings == 0) sfx(14, 0)
+                self.triggered = true
+            end
 		else 
 			local msg = self.blocker.block_text or 
 			"the door appears to be locked. maybe i can find a key."
@@ -1101,6 +1126,16 @@ function add_door( area, x,y, spwall, boarded)
 		
 		return true
 	end
+
+    function door:on_attack(actor)
+        if self.blocker and not self.blocker.triggered then
+            if g_player_collected_axe then
+                if (#g_lightnings == 0) sfx(10, 0)
+                self.blocker.triggered = true
+            end
+        end
+        return true
+    end
 	
     add_ent_for_draw_order(ceil, door.y)
 
@@ -1246,8 +1281,20 @@ function add_area_f1_library()
 	
 	add_ent(area,	35.5,	33.2,	s_plant)
 	add_ent(area,	35,	31,		s_clock)
-	add_ent(area,	34,	33,		s_safe)
 	
+    f1_library_safe = add_ent(area,	34,	33,		s_safe)
+	
+    function f1_library_safe:on_use(actor)
+        if not self.triggered then
+            sfx(8, 0)
+			self.triggered = true
+            
+            text_add("lucky that the safe was open!___ the code to his office reads:__ 4_9_2_6.")
+		end
+		
+		return true
+	end
+
 	return area
 end
 
@@ -1298,7 +1345,7 @@ function add_area_f1_storage()
 end
 
 function add_area_f2_construction_a()
-    local area = add_map_area(14,4,23,10,    	14,4,23,10)
+    local area = add_map_area(14,4,23,12,    	14,4,23,10)
 
     f2_construction_fuel_cupboard = add_ent(area, 15, 7, s_cupboard)
     
@@ -1350,9 +1397,14 @@ function add_area_f0_garage()
 	local area =  add_map_area(72,5,87,14,    	72,5,87,14)
 		
 	f0_axe = add_ent(area, 86, 10,		s_axe)
-	
+	f0_axe.type = 1
+
 	function f0_axe:on_use(actor)
-		-- do stuff
+		if not self.triggered then
+            if (#g_lightnings == 0) sfx(8, 0)
+            g_player_collected_axe = true
+            self.triggered = true
+        end
 		return true
 	end
 		
@@ -1363,9 +1415,15 @@ function add_area_f0_kitchen()
 	local area =  add_map_area(49,0,62,5,    		49,0,62,5)
 	
 	f0_garage_key = add_ent(area, 60, 4,		s_key)	
-	
+	f0_garage_key.type = 1
+
+    add_ent_blocker(f0_garage_key, f0_generator)
+
 	function f0_garage_key:on_use(actor)
-		-- do stuff
+		if not self.triggered and fb_generator.triggered then
+            if (#g_lightnings == 0) sfx(8, 0)
+            self.triggered = true
+        end
 		return true
 	end
 	
@@ -1373,12 +1431,12 @@ function add_area_f0_kitchen()
 end
 
 function add_area_f0_livingroom()
-	local area =  add_map_area(49,6,62,14,    	49,6,62,14)
+	local area =  add_map_area(49,6,62,16,    	49,6,62,14)
 	
 	f0_generator = add_ent(area, 78, 08,		s_generator)
 	
 	function f0_generator:on_use(actor)
-		-- do stuff
+		if (#g_lightnings == 0) sfx(8, 0)
 		return true
 	end
 	
@@ -1391,7 +1449,13 @@ function add_area_fb_gen_area()
 	fb_generator = add_ent(area, 56, 34,		s_generator)
 	
 	function fb_generator:on_use(actor)
-		-- do stuff
+		if not self.triggered then
+            if (#g_lightnings == 0) sfx(8, 0)
+            self.triggered = true
+            
+            text_add("ok_._._.___ everything should be stable now.___ time to find the source of that glass noise.")
+            f0_office_door.blocker.block_text = "brunos office_._._.___ this is where the sound came from.____ it's locked though_._._._ i think he left the code in the library safe.___ the library is boarded so i'll need to get an axe from the garage."
+        end
 		return true
 	end
 	
@@ -1482,10 +1546,15 @@ function add_game_maps()
 	
 	-- doors
 	local f0_livingroom_door 	= add_door( f0_corridor, 	55,15, 			s_wall_brown)
-	local f0_garage_door 			= add_door( f0_corridor, 	75,15, 			s_wall_brown)
+	f0_garage_door 			= add_door( f0_corridor, 	75,15, 			s_wall_brown)
 	local f0_bathroom_door 		= add_door( f0_corridor, 	92,15, 			s_wall_brown)
-	local f0_office_door 			= add_door( f0_office,			61,22,			s_wall_gray)	
+	f0_office_door 			= add_door( f0_office,			61,22,			s_wall_gray)	
 	
+    add_ent_blocker(f0_garage_door, f0_garage_key)
+    add_ent_blocker(f0_office_door, f1_library_safe)
+    f0_office_door.blocker.block_text = "brunos office_._._._"
+
+    
 	add_map_link(f0_corridor, f0_entrance)
 	add_map_link(f0_entrance, f0_corridor)
 	add_map_link(f0_corridor, f0_stairs)
@@ -1501,7 +1570,7 @@ function add_game_maps()
 	-- basement
 	local fb_corridor 				= add_map_area(49,40,70,43,    49,39,70,43)
 	local fb_entry 					= add_map_area(61,29,70,39,    60,29,70,39)
-	local fb_gen_area 			= add_area_fb_gen_area()
+	local fb_gen_area 			    = add_area_fb_gen_area()
 	
 	add_map_link(fb_entry, fb_corridor)
 	add_map_link(fb_corridor, fb_entry)
@@ -1560,6 +1629,7 @@ end
 function flow_init_common()
     flow_states[current_flow_state].frametime = 0
     flow_states[current_flow_state].stage += 1
+    flow_states[current_flow_state].stage_internal = 0
 end
 function flow_update_common()
     if (not g_drawing_text) flow_states[current_flow_state].frametime += 1
@@ -1646,6 +1716,7 @@ function flow_2_update()
             pl.frame = 1
         end
     elseif not flow_2_lightning_finished then
+
         if flow_states[current_flow_state].frametime == 5 then
             text_add("aaaaaaaaaaaggggghhhh!", false, true, true, true)
         end
@@ -1680,6 +1751,8 @@ function flow_2_exit()
 
 end
 
+flow_3_monster_surprise_done = false
+
 function flow_3_init()
     
     -- 2nd to 1st floor
@@ -1691,7 +1764,7 @@ function flow_3_init()
     -- 1st to ground floor blocker
     add_teleporter(25,44, 27,44,  26,42, true, true, "i needed to find that battery on the floor above_._._.")
 
-    add_monster_actor(242, 327, 3)
+    firstMonster = add_monster_actor(242, 327, 3)
 
 end
 function flow_3_update()
@@ -1699,6 +1772,15 @@ function flow_3_update()
     -- we're done when we have the fuel
     if f2_construction_fuel_cupboard.triggered then
         flow_states[current_flow_state].stage += 1
+    end
+
+    if not flow_3_monster_surprise_done then
+        if dist(pl.x,pl.y,firstMonster.x,firstMonster.y) < 54 then
+            flow_3_monster_surprise_done = true
+            
+            text_add("what the duck is that?!", false, true, true)
+
+        end
     end
 
 end
@@ -1718,7 +1800,6 @@ function flow_4_init()
 end
 function flow_4_update()
 
-    
     -- we're done when we have the fuel in both generators
     if f1_generator.triggered and f2_generator.triggered then
         flow_states[current_flow_state].stage += 1
@@ -1731,20 +1812,7 @@ function flow_4_exit()
 end
 
 function flow_5_init()
-    
-end
-function flow_5_update()
 
-end
-function flow_5_exit()
-
-    -- remove ground blocking
-    remove_teleporter(25,44)
-    
-end
-
-function flow_6_init()
-    --minx,miny,maxx,maxy, desx, desy, d, block_warp, block_text
     -- 1st to ground floor
     add_teleporter(25,44, 27,44,  75,19, false)
 
@@ -1757,9 +1825,40 @@ function flow_6_init()
     -- basement to ground floor
     add_teleporter(67,30, 69,30,  80,19, false)
 
+    --todo turn lights on for a moment here
+end
+function flow_5_update()
+
+    if f1_library_safe.triggered then
+        flow_states[current_flow_state].stage += 1
+    end
+
+end
+function flow_5_exit()
+end
+
+
+
+function flow_6_init()
+   
+   
 
 end
 function flow_6_update()
+
+    -- Walk into office
+    if flow_states[current_flow_state].stage_internal == 0 then
+        if dist(pl.x,pl.y,f0_office_door.x, f0_office_door.y+8) < 8 then
+            --start the end "cutscene"
+            flow_states[current_flow_state].stage_internal = 1
+            do_lightning_long()
+        end
+    
+    -- Monologue about what happened
+    elseif flow_states[current_flow_state].stage_internal == 1 then
+
+
+    end
 
 end
 function flow_6_exit()
