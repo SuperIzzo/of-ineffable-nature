@@ -1619,6 +1619,11 @@ function add_area_fb_gen_area()
 
             text_add("ok_._._.___ everything should be stable now.___ time to find the source of that glass noise.")
             f0_office_door.blocker.block_text = "brunos office_._._.___ this is where the sound came from.____ it's locked though_._._._ i think he left the code in the library safe.___ the library is boarded so i'll need to get an axe from the garage."
+			
+			for gen in all(g_generators) do
+				gen.power_leak = false
+				gen.power_level = 10000
+			end
         end
 		return true
 	end
