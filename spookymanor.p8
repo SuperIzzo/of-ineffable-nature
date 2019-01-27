@@ -48,7 +48,8 @@ fade_screen_frame_time = 0
 function _init()
 
     --mon = add_actor(38,328,1)
-    pl = add_actor(24,256,0) --pixels
+    pl = add_actor(208,330,0) --pixels
+    --pl = add_actor(24,256,0) --pixels
     pl.isplayer = true
     
     add_game_maps()
@@ -139,6 +140,7 @@ function _update()
                     fade_screen_y = 0
 
                     teleporter_using = t
+                    return
                 end
             end
         end
@@ -231,10 +233,10 @@ function _draw()
         print("game over", camera_x+48, camera_y+64, 7)
     end
 
-    --local cx = (pl.x / 8)
-   -- local cy = (pl.y / 8) + 0.75
-   -- print("world x "..pl.x  ..","..pl.y,camera_x,camera_y+100,7)
-    --print("map x "..cx  ..","..cy,camera_x,camera_y+110,7)
+    local cx = (pl.x / 8)
+    local cy = (pl.y / 8) + 0.75
+    print("world x "..pl.x  ..","..pl.y,camera_x,camera_y+5,7)
+    print("map x "..cx  ..","..cy,camera_x,camera_y+15,7)
     print("s"..current_flow_state.."."..flow_states[current_flow_state].stage ,camera_x + 100,camera_y,7)
    --print("fps "..stat(7) ,camera_x + 100,camera_y,7)
 end
@@ -1077,6 +1079,9 @@ end
 --                          flow functions     start
 -- ########################################################################
 
+-- Used for blocking entry at the start
+flow_blocker_timer = 0
+
 flow_states = {}
 current_flow_state = 1
 
@@ -1130,11 +1135,19 @@ function flow_2_init()
 
     f1_bedroom_door.triggered = true
 
+    add_teleporter(25,44, 27,44,  26,42, true, true, "i should find some fuses to start the generator on this level_._._.")
+    add_teleporter(30,44, 32,44,  31,42, true, true, "i should find some fuses to start the generator on this level_._._.")
+
 end
 function flow_2_update()
 
+    
+
 end
 function flow_2_exit()
+
+    remove_teleporter(25,44)
+    remove_teleporter(30,44)
 
 end
 
@@ -1240,7 +1253,7 @@ teleporters = {}
 
 -- adds a teleporter to be looking out to teleport the player
 --  min/max of the activation area, destination xy, and if facing down. in cell coords
-function add_teleporter(minx,miny,maxx,maxy, desx, desy, d)
+function add_teleporter(minx,miny,maxx,maxy, desx, desy, d, block_warp, block_text)
     local t = {}
 
     t.minx = minx
@@ -1251,50 +1264,78 @@ function add_teleporter(minx,miny,maxx,maxy, desx, desy, d)
     t.desy = desy
     t.face_down = d
 
+    t.block_warp = block_warp
+    t.block_text = block_text
+
     add(teleporters,t)
+end
+
+function remove_teleporter(minx,miny)
+    for t in all(teleporters) do
+        if t.minx == minx and t.miny == miny then
+            del(teleporters, t)
+            return
+        end
+    end
 end
 
 function add_teleporters()
     
     -- 2nd to 1st floor
-    add_teleporter(25,19, 27,19,  26,43, false)
+    --add_teleporter(25,19, 27,19,  26,43, false)
 
     -- 1st to 2nd floor
-    add_teleporter(30,45, 32,45,  75,19, false)
+    --add_teleporter(30,45, 32,45,  75,19, false)
 	
     -- 1st to ground floor
-    add_teleporter(25,44, 27,44,  26,17, false)
+    --add_teleporter(25,44, 27,44,  26,17, false)
 
     -- ground to 1st floor
-    add_teleporter(74,21, 76,21,  31,43, false)
+    --add_teleporter(74,21, 76,21,  31,43, false)
 	
     -- ground to basement floor
-    add_teleporter(79,20, 81,20,  68,32, true)
+    --add_teleporter(79,20, 81,20,  68,32, true)
 
     -- basement to ground floor
-    add_teleporter(67,30, 69,30,  80,19, false)
+    --add_teleporter(67,30, 69,30,  80,19, false)
+end
+
+function warp_player()
+    pl.x = teleporter_using.desx * 8
+    pl.y = teleporter_using.desy * 8
+
+    camera_x = pl.x - 64
+    camera_y = pl.y - 64
+
+    pl.frame = 1
+    if(not teleporter_using.face_down) pl.dir = 4
+
+    just_teleported = true
+    teleporter_using = nil
 end
 
 function process_teleporting()
+    
+    if (not teleporter_using) return
+
+    if teleporter_using.block_warp then
+        text_add(teleporter_using.block_text)
+        warp_player()
+        just_teleported = false
+        pause_game_for_warp = false
+
+        return
+    end
+
     if fade_screen_y >= 127 and not g_player_died then
-
-        pl.x = teleporter_using.desx * 8
-        pl.y = teleporter_using.desy * 8
-        camera_x = pl.x - 64
-        camera_y = pl.y - 64
-
         for a in all(actors) do
             a.dx = 0
             a.dy = 0
         end
 
-        pl.frame = 1
-        
-        if(not teleporter_using.face_down) pl.dir = 4
+        warp_player()
 
-        just_teleported = true
         pause_game_for_warp = false
-
     end
 end
 
@@ -1479,7 +1520,7 @@ function text_update()
 
     -- every two frames display the next char
     if (text_displaytimer < 1) text_displaytimer += 1 return
-    text_displaytimer = 0
+    text_displaytimer = 1
 
     if sub(text_queue[1][text_displayline], text_displaychar, text_displaychar) == "_" then
         text_displaytimer = -4
