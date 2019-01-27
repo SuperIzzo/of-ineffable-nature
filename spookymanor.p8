@@ -901,9 +901,14 @@ function add_door( area, x,y, spwall, boarded)
     disable_ent_collision(ceil)
 	disable_ent_collision(ceil2)
 
-	local door = add_ent(area, x,y, s_door)
+	local door = add_ent(area, x,y, s_door)	
     door.type = 2
-	door.boarded = boarded
+	
+	if boarded then
+		door.blocker = add_ent(area, x,y, s_door_boards)
+		door.blocker.triggered = false
+		door.blocker.on_use = action_text("bruno boarded this room, he didn't want me going there.______if i had an axe i would be able to get in.")
+	end
 	
     add_ent_for_draw_order(ceil, door.y)
 
@@ -920,11 +925,7 @@ function draw_door(door)
 	spr(s_door_bot, door.x, door.y, 1,1, door.fliph, door.flipv)
 	spr(s_door_top, door.x, door.y-8, 1,1, door.fliph, door.flipv)
 	
-	pal(1,1) pal(2,2) pal(4,4) pal(13,13)
-	
-	if door.boarded then
-		spr(s_door_boards, door.x, door.y, 1,1, door.fliph, door.flipv)
-	end
+	pal(1,1) pal(2,2) pal(4,4) pal(13,13)	
 end
 
 s_door = draw_door
