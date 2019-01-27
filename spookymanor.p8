@@ -604,7 +604,7 @@ end
 
 -- xy is in cell coords. su and sl are upper and lower sprites, su is optional
 --  m = the map to tie this to. 
-function add_ent(x,y,sp,m,ontop,drawblack,fliph,flipv)
+function add_ent(m, x,y,sp,ontop,drawblack,fliph,flipv)
     local e = {}
 
     e.x = (m.cx + x) * 8
@@ -745,25 +745,26 @@ s_small_table = 93
 s_shelf_top 	= 108
 s_clock 			= 79
 s_door_top 		= 73
-s_door 			= 89
+s_door_bot		= 89
+s_door				=	{s_door_bot ,s_door_top}
 
 function add_area_main_bedroom()
 	local area = add_map_area(   0,27,13,39,     0,27,13,36)
 	 -- bedroom props - these coords are offset from the cell xy passed into add_map_area
     -- ceilings above the door    
 
-    add_ent(3,4, 			s_small_table, area)
+    add_ent(area,	3,4,		s_small_table)
 
-    add_ent(2,7, 			s_chair, area)
-    add_ent(3,7, 			s_table, area)
-    add_ent(4,7, 			s_chair, area, false, false, true)
+    add_ent(area,	2,7,		s_chair)
+    add_ent(area,	3,7,		s_table)
+    add_ent(area,	4,7,		s_chair, false, false, true)
     
-    add_ent(6,3, 			s_shelf_top, area)
-    add_ent(7,2, 			s_shelf_top, area)
-    add_ent(12,3, 		s_shelf_top, area)
+    add_ent(area,	6,3,		s_shelf_top)
+    add_ent(area,	7,2,		s_shelf_top)
+    add_ent(area,	12,3,		s_shelf_top)
 	
-    add_ent(11, 4, 		s_table, area)
-    add_ent(2, 2, 		s_clock , area)
+    add_ent(area,	11, 4,	s_table)
+    add_ent(area,	2, 2, 		s_clock )
 	
 	return area
 end
@@ -787,10 +788,10 @@ function add_game_maps()
     local ff_stairs = add_map_area(         24,43,33,46,    24,44,33,46)
 
 	-- corridor props	
-	local ff_ceil_one = add_ent(9,1,  {82, 119}, ff_corridor, false, true)
+	local ff_ceil_one = add_ent(ff_corridor, 9,1,  {82, 119}, false, true)
     disable_ent_collision(ff_ceil_one)
 	
-	local ff_bedroom_door = add_ent(9,2, {89,73}, ff_corridor)
+	local ff_bedroom_door = add_ent(ff_corridor, 9,2, s_door)
     ff_bedroom_door.type = 2
     ff_bedroom_door.triggered = true --todo remove
 
