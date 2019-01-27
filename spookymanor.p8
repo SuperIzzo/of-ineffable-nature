@@ -913,7 +913,7 @@ end
 function draw_door(door)
 	pal(1,2)	
 	
-	if door.open then
+	if door.triggered then
 		pal(2,0)	pal(4,0)	pal(13,0)
 	end
 	
@@ -1084,7 +1084,7 @@ function add_game_maps()
     
 	local f1_library_door 		= add_door( f1_corridor, 19,39, 	s_wall_brown, true)
 	local f1_storage_door 	= add_door( f1_corridor, 43,39, 	s_wall_brown)
-	f1_storage_door.open = true
+	f1_storage_door.triggered = true
 	
 	local f1_bathroom_door 		= add_door( f1_bathroom, 9,46, 		s_wall_bath)
 	local f1_spareroom_door 	= add_door( f1_spare_bedroom, 43,46,s_wall_stripe)
