@@ -878,6 +878,7 @@ s_gfclock					= {s_gfclock_bot,s_clock}
 s_door_top 				= 73
 s_door_bot				= 89
 s_door_boards		= 72
+s_generator			= 106
 s_door						=	{s_door_bot ,s_door_top}
 s_plant					= 127
 s_photo1					= 78
@@ -1056,6 +1057,15 @@ function add_area_f1_library()
 	return area
 end
 
+function add_area_f1_storage()
+	local area = add_map_area(        39,30,46,39,    39,30,46,36)
+	
+	add_ent(area, 41, 33,		s_generator)	
+	add_ent(area, 45, 33,		s_cupboard)
+	
+	return area
+end
+
 function add_game_maps()
 
     -- first floor placement
@@ -1065,7 +1075,7 @@ function add_game_maps()
     local f1_corridor = add_area_f1_corridor()
     local f1_bathroom = add_area_f1_bathroom()
     local f1_library = add_area_f1_library()
-    local f1_storage = add_map_area(        39,30,46,39,    39,30,46,36)
+    local f1_storage = add_area_f1_storage()
     local f1_spare_bedroom = add_map_area(  38,43,46,50,    38,44,46,50)
     local f1_stairs = add_map_area(         24,43,33,46,    24,44,33,46)	
 	
@@ -1073,6 +1083,8 @@ function add_game_maps()
 	f1_bedroom_door 	    = add_door( f1_corridor, 9,39, 		s_wall_brown)
     
 	local f1_library_door 		= add_door( f1_corridor, 19,39, 	s_wall_brown, true)
+	local f1_storage_door 	= add_door( f1_corridor, 43,39, 	s_wall_brown)
+	f1_storage_door.open = true
 	
 	local f1_bathroom_door 		= add_door( f1_bathroom, 9,46, 		s_wall_bath)
 	local f1_spareroom_door 	= add_door( f1_spare_bedroom, 43,46,s_wall_stripe)
