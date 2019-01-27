@@ -317,11 +317,13 @@ function actor_action(actor, attack)
 		if m.show then
 			for e in all(m.entities) do
 				if actor_facing_entity(actor, e) then
-					if attack and e.on_attack then
-						return e.on_attack(actor)
+					local result = false
+					if attack and e.on_attack then						
+						result = e.on_attack(actor)
 					elseif e.on_use then
-						return e.on_use(e, actor)
+						result = e.on_use(e, actor)
 					end
+					if(result) return result;
 				end
 			end			
 		end
@@ -858,6 +860,7 @@ end
 function action_text(text)
 	return function(e,a)
 		text_add(text)
+		return true
 	end
 end
 
@@ -907,7 +910,22 @@ function add_door( area, x,y, spwall, boarded)
 	if boarded then
 		door.blocker = add_ent(area, x,y, s_door_boards)
 		door.blocker.triggered = false
-		door.blocker.on_use = action_text("bruno boarded this room, he didn't want me going there.______if i had an axe i would be able to get in.")
+		door.blocker.boards = true		
+		door.blocker.block_text = "bruno boarded this room, he didn't want me going there.______if i had an axe i would be able to get in.";
+	end
+	
+	function door:on_use(actor)
+		if self.triggered then 
+			self.triggered = false
+		elseif not self.blocker or self.blocker.triggered then
+			self.triggered = true
+		else 
+			local msg = self.blocker.block_text or 
+			"the door appears to be locked. maybe i can find a key"
+			text_add(msg)
+		end
+		
+		return true
 	end
 	
     add_ent_for_draw_order(ceil, door.y)
