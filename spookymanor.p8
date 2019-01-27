@@ -52,10 +52,10 @@ lightning_chance_timer = 0
 -- main entry points
 function _init()
 
-    --mon = add_actor(38,328,1)
-    --pl = add_actor(344,273,0) --pixels
+    pl = add_actor(344,273,0) --pixels
 	--pl = add_actor(67*8,16*8,0) --floor 0
-    pl = add_actor(24,256,0) --pixels
+
+    --pl = add_actor(24,256,0) --pixels
     pl.isplayer = true
     
     set_light_level(g_light_default)
@@ -67,14 +67,7 @@ function _init()
 
 
     --testing purposes
-    flow_2_lightning_finished = true
-    flow_2_lightning_flashed = true
-    
-    
-
-    current_flow_state = 2
-    flow_states[current_flow_state].frametime = 90
-    flow_states[current_flow_state].stage += 1
+    current_flow_state = 3
 
 end
 
@@ -280,8 +273,8 @@ function _draw()
 
     local cx = (pl.x / 8)
     local cy = (pl.y / 8) + 0.75
-    print("world x "..pl.x  ..","..pl.y,camera_x,camera_y+5,7)
-    print("map x "..cx  ..","..cy,camera_x,camera_y+15,7)
+    --print("world x "..pl.x  ..","..pl.y,camera_x,camera_y+5,7)
+    --print("map x "..cx  ..","..cy,camera_x,camera_y+15,7)
     --print("s"..current_flow_state.."."..flow_states[current_flow_state].stage ,camera_x + 100,camera_y,7)
    --print("fps "..stat(7) ,camera_x + 100,camera_y,7)
 end
@@ -778,8 +771,16 @@ function process_actor_ai(a)
     
     local distance = dist(a.x, a.y, pl.x, pl.y)
     
+    if not a.insamemapasplayer then
+    if abs(a.x - pl.x) > 32 or abs(a.y - pl.y) > 32 then
+        a.dx = 0
+        a.dy = 0
+        return
+    end
+    end
+
     -- very simple follow because ghost - maybe change the dist to a los check
-    if not a.attack and (a.insamemapasplayer or distance < 32) then
+    if not a.attack and (a.insamemapasplayer or (distance >= 0 and distance < 32)) then
 
         local x = 0
         local y = 0
@@ -803,6 +804,9 @@ function process_actor_ai(a)
         end
 
         add_force_to_actor(a, x, y)
+    else
+        a.dx = 0
+        a.dy = 0
     end
     
     if a.insamemapasplayer and distance < 72 and distance >= 24 then
@@ -814,7 +818,7 @@ function process_actor_ai(a)
         stop_sfx(sfx_enemy_close, a)
     end
 
-    if distance < 8 then
+    if distance >= 0 and distance < 8 then
         if not a.attack then 
             a.dx = 0
             a.dy = 0
@@ -1720,7 +1724,7 @@ function flow_3_init()
     -- 1st to ground floor blocker
     add_teleporter(25,44, 27,44,  26,42, true, true, "i needed to find that battery on the floor above_._._.")
 
-    add_monster_actor(262, 327, 3)
+    add_monster_actor(242, 327, 3)
 
 end
 function flow_3_update()
@@ -1773,7 +1777,7 @@ function flow_5_exit()
 end
 
 function flow_6_init()
-    
+    --minx,miny,maxx,maxy, desx, desy, d, block_warp, block_text
     -- 1st to ground floor
     add_teleporter(25,44, 27,44,  75,19, false)
 
@@ -2040,7 +2044,7 @@ function dist(ax, ay, bx, by)
     local x_diff = ax - bx
     local y_diff = ay - by
 
-    return sqrt(x_diff * x_diff + y_diff * y_diff)
+    return sqrt((x_diff * x_diff) + (y_diff * y_diff))
 end
 
 -- ########################################################################
