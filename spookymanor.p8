@@ -304,11 +304,11 @@ function pl_move2()
     local y = 0
 	
 	local cell_size = 8
-	local speed = 1;
+	local speed = 1
 	
 	pl.move_timer = (pl.move_timer or 0) -1
 	
-	if( pl.move_timer < 0) then	
+	if pl.move_timer < 0 then	
 		pl.dx = 0
 		pl.dy = 0
 		
@@ -328,7 +328,7 @@ function pl_move2()
 		pl.use = btnp(5)
 	end
 	
-	if( pl.dx ~= 0 or pl.dy ~= 0 )
+	if  pl.dx ~= 0 or pl.dy ~= 0 then
 		
 	end
 
