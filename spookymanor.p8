@@ -876,6 +876,7 @@ function add_game_maps()
 	-- second floor
 	local f2_corridor 				= add_map_area(0,11,46,17,    	0,11,46,17)
 	local f2_corridor_anex 	= add_map_area(5,0,8,10,    			5,0,8,10)	
+	local f2_staircase			= add_map_area(24,18,28,20,   	24,18,28,20)
 	local f2_storage 				= add_map_area(0,0,4,4,    			0,0,4,4)
 	local f2_toilet 					= add_map_area(9,0,13,4,    			9,0,13,4)
 	local f2_bedroom1			= add_map_area(0,6,4,10,    			0,6,4,10)
@@ -884,10 +885,12 @@ function add_game_maps()
 	local f2_construction_a	= add_map_area(14,4,23,10,    	14,4,23,10)
 	local f2_construction_b	= add_map_area(24,4,38,10,    	24,4,38,10)
 	local f2_peaceroom		= add_map_area(39,4,46,10,    	39,4,46,10)
-	local f2_office					= add_map_area(38,18,46,24,   	38,18,46,24)
+	local f2_office					= add_map_area(38,18,46,24,   	38,18,46,24)	
 	
 	add_map_link(f2_corridor, f2_corridor_anex)
 	add_map_link(f2_corridor_anex, f2_corridor)
+	add_map_link(f2_staircase, f2_corridor)
+	add_map_link(f2_corridor,f2_staircase)
 	
 	-- anex rooms
 	add_map_link(f2_storage, f2_corridor_anex)
@@ -902,7 +905,7 @@ function add_game_maps()
 	add_map_link(f2_construction_a, f2_construction_b)
 	add_map_link(f2_construction_b, f2_construction_a)
 	
-	add_map_link(f2_office, f2_corridor)
+	add_map_link(f2_office, f2_corridor)	
 	
 
     -- this ceiling needs to be added to the corrider, otherwise it shows up in the first flow section
@@ -937,7 +940,7 @@ end
 function add_teleporters()
     
     -- 2nd to 1st floor
-    add_teleporter(25,19, 27,19,  31,43, false)
+    add_teleporter(25,19, 27,19,  26,43, false)
 
     -- 1st to 2nd floor
     add_teleporter(30,45, 32,45,  75,19, false)
@@ -946,7 +949,7 @@ function add_teleporters()
     add_teleporter(25,44, 27,44,  26,17, false)
 
     -- ground to 1st floor
-    add_teleporter(74,21, 76,21,  26,43, false)
+    add_teleporter(74,21, 76,21,  31,43, false)
 	
     -- ground to basement floor
     add_teleporter(79,20, 81,20,  68,32, true)
