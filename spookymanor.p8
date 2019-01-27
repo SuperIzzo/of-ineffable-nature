@@ -927,7 +927,7 @@ function add_door( area, x,y, spwall, boarded)
 			self.triggered = true
 		else 
 			local msg = self.blocker.block_text or 
-			"the door appears to be locked. maybe i can find a key"
+			"the door appears to be locked. maybe i can find a key."
 			text_add(msg)
 		end
 		
