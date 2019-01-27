@@ -1232,15 +1232,22 @@ function add_generator(area, floor,	 x, y)
 	generator.floor = floor	
 	
 	function generator:tick()
-		if(self.power_level > 0 and self.power_leak) self.power_level -= 1
+		if(self.power_level > 0 and self.power_leak and self.light ) self.power_level -= 1
 	end
 	
 	function generator:switch()
-		self.light = self.power_level > 0 and not self.light 		
+		if self.power_level > 0 then 
+			self.light = not self.light
+		end
 	end
 	
 	function generator:get_lightlevel()
 		local power = self.power_level
+		
+		if not self.light then
+			return self.min_light
+		end
+		
 		if power > 0  then
 			if power < 80 then
 				local rndlv = flr( rnd( g_light_default + power / 20 - 2.5)  + power / 20)
