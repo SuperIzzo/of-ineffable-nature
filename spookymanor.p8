@@ -1385,7 +1385,7 @@ function add_area_f1_storage()
                     -- adding fuel
                     if current_flow_state == 4 then
                         text_for_flow_4_generator_fueled()
-                        g_generators.power_level[1] = 300
+                        
                     else
                         text_add("sweet!___ h_m_m_m___ doesn't appear to be working__.__.__._____ ah yes, probably needs some fuel. ____ i think there was some upstairs in the room being constructed.")
                     end
@@ -1438,7 +1438,6 @@ function add_area_f2_construction_b()
                     if (#g_lightnings == 0) sfx(8, 0)
                     self.triggered = true
 
-                    g_generators.power_level[2] = 300
                     text_for_flow_4_generator_fueled()
                 else
                     text_add("i need to find the fuel first_._._.___ should be somewhere around here.")
@@ -1514,8 +1513,6 @@ function add_area_fb_gen_area()
             if (#g_lightnings == 0) sfx(8, 0)
             self.triggered = true
             
-            g_generators.power_level[-1] = 300
-
             text_add("ok_._._.___ everything should be stable now.___ time to find the source of that glass noise.")
             f0_office_door.blocker.block_text = "brunos office_._._.___ this is where the sound came from.____ it's locked though_._._._ i think he left the code in the library safe.___ the library is boarded so i'll need to get an axe from the garage."
 			
