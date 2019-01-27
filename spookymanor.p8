@@ -379,7 +379,7 @@ function redify_screen()
 	local red_cols			= { 0, 2, 8, 14, 4,		0,0,2,2,8,8,8,8,1 }
 	-- red_pal			= { 2, 8, 0, 14, 	8, 4, 14, 8, 		14,  2, 2, 0,  	8, 2, 8, 0}
 	
-	local palette = create_temp_pal(10)		
+	local palette = create_temp_pal(5)		
 	for i =1,16 do
 		palette[i] = red_cols[ flr(rnd(#red_cols))+1]
 	end
