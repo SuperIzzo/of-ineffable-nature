@@ -22,6 +22,8 @@ g_drawing_text = false
 g_text_waiting_on_input = false
 g_text_is_diary = false
 
+g_draw_before_player = false
+
 camera_x = 0
 camera_y = 0
 
@@ -98,19 +100,34 @@ function _draw()
         
         camera(camera_x, camera_y)
 
-        -- loop through areas, if they can show, draw the map and its entities
+        g_draw_before_player = true
+
+        local visible_areas = {}
+
+        -- loop through areas, if they can show, draw the map
         for m in all(areas) do
+            m.linkshow = false
             if m.show then 
-                draw_map_area(m)
-                foreach(m.entities, draw_ent)
-                foreach(m.links, draw_linked_maps)
+                add(visible_areas, m)
             end
         end
         
-        -- map(0,0,0,0,16,16,flag_sprite_map_bottom_layer)
+        for m in all(visible_areas) do
+            draw_map_area(m)
+            foreach(m.links, draw_linked_maps)
+        end
 
         foreach(actors, draw_actor)
 
+        g_draw_before_player = false
+
+        -- draw this a second time, but because we're drawing after the player now, only entities 
+        --  on a lower y axis to the player will be drawing
+        for m in all(visible_areas) do
+            draw_map_area(m)
+            foreach(m.links, draw_linked_maps)
+        end
+        --
         -- map(0,0,0,0,16,16,flag_sprite_map_top_layer)
         
         if (g_drawing_text) text_draw()
@@ -118,18 +135,12 @@ function _draw()
         draw_teleport_warp()
     end
 
+    --local cx = (pl.x / 8)
+    --local cy = (pl.y / 8) + 0.75
+   -- print("world x "..pl.x  ..","..pl.y,camera_x,camera_y+100,7)
+    --print("map x "..cx  ..","..cy,camera_x,camera_y+110,7)
 
-    local cx = (pl.x / 8)
-    local cy = (pl.y / 8) + 0.75
-    print("world x "..pl.x  ..","..pl.y,camera_x,camera_y+100,7)
-    print("map x "..cx  ..","..cy,camera_x,camera_y+110,7)
-    --print("cxy "..pl.cx ..","..pl.cy.." mxy "..pl.mx..","..pl.my,camera_x,120,7)
-    --print("d: "..dist(pl.x,pl.y,areas[4].entities[1].x,areas[4].entities[1].y), camera_x,camera_y+120,7)
-    
    --print("fps "..stat(7) ,camera_x + 100,camera_y,7)
-
-   
-
 end
 
 -- ########################################################################
@@ -428,16 +439,24 @@ function add_ent_alt_sprite(e,s)
     e.spralt = s
 end
 
-function add_ent(x,y,s,m)
+-- xy is in cell coords. su and sl are upper and lower sprites, su is optional
+--  m = the map to tie this to. 
+function add_ent(x,y,su,sl,m,ontop,drawblack,fliph,flipv)
     local e = {}
+
     e.x = (m.cx + x) * 8
     e.y = (m.cy + y) * 8
-    e.spr = s
+    e.spru = su
+    e.sprl = sl
 
     -- 0 = none, 1 = collectable, 2 = openable door
     e.type = 0
 
     e.triggered = false
+    e.ontop = ontop
+    e.drawblack = drawblack
+    e.fliph = fliph
+    e.flipv = flipv
 
     add(m.entities,e)
 
@@ -449,8 +468,23 @@ function draw_ent(e)
     if e.type == 1 then
         if (e.triggered) return
     end
+    
+    -- wait until after the player has drawn if this entity would be on top
+    --  or always drawing on top, don't draw before
+    if g_draw_before_player then
+        if(e.y > pl.y) return
+        if(e.ontop) return
+    elseif not e.ontop then
+        -- then if we drew on bottom don't draw on top
+        if(e.y <= pl.y) return
+    end
 
-    spr(e.spr,e.x,e.y)
+    if (e.drawblack) palt(0, false)
+
+    if (e.spru != -1) spr(e.spru,e.x,e.y-8, 1,1, e.fliph, e.flipv)
+    spr(e.sprl,e.x,e.y, 1,1, e.fliph, e.flipv)
+
+    if (e.drawblack) palt(0, true)
 end
 
 function update_ent(e)
@@ -462,13 +496,13 @@ function update_ent(e)
         if dist(pl.x,pl.y,e.x,e.y) < 7.5 then 
             e.triggered = true
             --text_add("collected a key! __it must be my lucky day, __better put on a lottery ticket then i think!_!_!", true)
-            text_add("this is a journal entry, be kind to me, for as i am a fickle beast that should be handled with responsibility.",true)
+            --text_add("this is a journal entry, be kind to me, for as i am a fickle beast that should be handled with responsibility.",true)
             -- todo sound effect, maybe ptfx?
         end
     
     -- openable door - locked and has collision while blocker is active
     elseif e.type == 2 then
-        if e.bl.triggered then
+        if e.bl and e.bl.triggered then
             if dist(pl.x,pl.y,e.x,e.y) < 16 then 
                 e.triggered = true
                 e.spr = e.spralt
@@ -499,6 +533,7 @@ function add_map_area(minx,miny,maxx,maxy,cx,cy,cex,cey)
     
     a.entered = false
     a.show = false
+    a.linkshow = false
 
     a.entities = {}
     a.links = {}
@@ -525,18 +560,20 @@ function left_area(a)
 end
 
 function draw_map_area(m)
-    map(m.cx,m.cy, m.cx*8,m.cy*8, m.cex - m.cx,m.cey - m.cy)
+    if (g_draw_before_player) map(m.cx,m.cy, m.cx*8,m.cy*8, m.cex - m.cx,m.cey - m.cy)
+    foreach(m.entities, draw_ent)
 end
 
 function draw_linked_maps(m)
+    m.linkshow = true
     draw_map_area(m)
 end
 
 function add_game_maps()
 
-    -- First Floor
+    -- first floor
 
-    --                                      Player XY       Cell XY
+    --                                      player xy       cell xy
     local ff_main_bedroom = add_map_area(   0,27,13,36,     0,27,13,36)
     local ff_corridor = add_map_area(       0,37,46,43,     0,37,46,43)
     local ff_bathroom = add_map_area(       6,44,16,51,     6,44,16,51)
@@ -558,6 +595,23 @@ function add_game_maps()
     add_map_link(ff_corridor, ff_spare_bedroom)
     add_map_link(ff_corridor, ff_stairs)
     add_map_link(ff_corridor, ff_main_bedroom)
+
+    -- bedroom props - these coords are offset from the cell xy passed into add_map_area
+
+    -- ceilings above the door
+    add_ent(9,10, -1,119, ff_main_bedroom, true, true)
+    add_ent(10,10, -1,119, ff_main_bedroom, true, true)
+
+    add_ent(2,4, -1,93, ff_main_bedroom) -- Bedside table
+
+    add_ent(2,7, -1,109, ff_main_bedroom) -- table left chair
+    add_ent(3,7, -1,77, ff_main_bedroom) -- table
+    add_ent(4,7, -1,109, ff_main_bedroom, false, false, true) -- table right chair
+
+    local ff_bedroom_door = add_ent(9,12, 73,89, ff_main_bedroom)
+    ff_bedroom_door.type = 2
+
+
 
     -- initialise areas that'll show up when you near them
     --local firstmap = add_map_area(0,0, 18,18, 0,0, 15,15)
@@ -724,11 +778,18 @@ function is_map_solid(x,y,dx,dy)
         -- list through the active area entities, see if one is a door and if it's on the cell
         --  we're checking, we've got collision
         for m in all(areas) do
-            if m.show then 
+            if m.show or m.linkshow then 
                 for e in all(m.entities) do
-                    if e.type == 2 and not e.triggered 
-                    and e.x / 8 == cell_x and e.y / 8 == cell_y then
-                        return true
+                    if e.type != 1 and not e.triggered then
+                        if e.x / 8 == cell_x and e.y / 8 == cell_y then
+                            return true
+                        
+                        -- annoying issue with clipping into a right side wall and being able to still move upwards
+                        --  doing this will check for the next block over from the current if overhanging into that
+                        --  column by more than a distance of 0.3
+                        elseif mod_x >= 0.15 and e.x / 8 == cell_x+1 and e.y / 8 == cell_y then
+                            return true
+                        end
                     end
                 end
             end
@@ -1046,17 +1107,17 @@ dddddddddddddddddddddddddddddddd55555555555535555d0000000d0000d0000000d550550000
 040404e0e0e066000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 8657575757575757575757575766861414141414141414141414141414141414141414141414668646a6170747d7660000000000000086040404040404040404
 04040414141466000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-8657d6d4d65757575757575757668614141414141414141414141414141414141414141414146686170707174747660000767777777787141414141414141414
+86575757575757575757575757668614141414141414141414141414141414141414141414146686170707174747660000767777777787141414141414141414
 14141414141466000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 86575757575757571707175757668614141414141414141414141414141414141414141414146686071707071707660000860404040404141414141414141414
 14141414141466000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 76757575757575758517657575767675757585146575757575757575757575757575757575757676757585176575760000860404040404141414141414141414
 14141414141466000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-76777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777760000861414141414141414141414141414
+76777777777777777717777777777777777777777777777777777777777777777777777777777777777777777777760000861414141414141414141414141414
 14141414141466000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-86253525e5252525259425352525252525252594352525e5253525252525252525253525e4252525252525942525660000861414141414141414141414141414
+86253525e5252525255725352525252525252594352525e5253525252525252525253525e4252525252525942525660000861414141414141414141414141414
 14141414141466000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-862626262626362626952626f4262626262626842626262626362626262626362626262626262626262626952626660000861414141414141414141414141414
+862626262626362626572626f4262626262626842626262626362626262626362626262626262626262626952626660000861414141414141414141414141414
 14141414141466000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 866464646464646457575764f5f7646464f7575757f764646464f764646464f76464646464646464646457575764660000861414141414141414141414141414
 14141414141466000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -1116,7 +1177,7 @@ __map__
 677777784b4b76784b4b7677776700000000000000000000000000000000000000000000000000000000000000000000000000004a0000004a00000000004a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 68504e504c4c6c6c5b4c50505066000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006800000066000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 6860606075757c7c7575616b6c6667777777777777777777777777777777777777777777777767677777777777776700000000000000000000000000000000000000680e0e0e66000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-686e5d7575757c7c7575754d7d666840404040404040404040404040404040404040404040406668554a55554a456600000000000000677777777777777777777777780e0e0e66000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+686e757575757c7c7575754d7d666840404040404040404040404040404040404040404040406668554a55554a456600000000000000677777777777777777777777780e0e0e66000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __sfx__
 010400070361003610026100261001610016100261002610066000560005600056000560004600046000360003600036000260002600026000360003600036000360005600056000560006600066000860008604
 01050020176430e63011626146201662400000126341663416630116331762014620136331263011620106230e6100f6100e610106100f6100e6100c6100b6100961007610056100461002610006100061000610
