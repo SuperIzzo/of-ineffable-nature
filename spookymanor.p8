@@ -156,7 +156,7 @@ function _draw()
 	
 	set_light_level(5)		
 	
-	if( rnd(10) < 1 ) add_lightning( 10, 16 )
+	if( rnd(50) < 1 ) add_lightning( 10, 16 )
 	
     --clear the screen first
     if not pause_game_for_warp or just_teleported then
@@ -273,6 +273,7 @@ light_lv_pals	=
 g_light_default = 8
 g_light_level = 8
 g_lightnings = {}
+g_thunder_timer = 0
 
 function set_pal(p)
 	for i =0,15 do
@@ -290,10 +291,12 @@ function add_lightning(duration, intensity)
 	local lightning = {}
 	lightning.intensity = intensity
 	lightning.time = duration
-	lightning.timer = duration
-	-- play sfx here
+	lightning.timer = duration	
 	
 	add(g_lightnings, lightning)
+	
+	if( g_thunder_timer <= 0) g_thunder_timer = duration * 5
+	
 	return lightning
 end
 
@@ -301,12 +304,21 @@ function draw_lightnings()
 		local intensity = 0
 		for lightning in all(g_lightnings) do			
 			lightning.timer -= 1
-			if(lightning.timer < 0) lightning.timer = 0			
+			
+			if (lightning.timer < 0) lightning.timer = 0
+			
 			intensity += lightning.intensity * lightning.timer / lightning.time
 		end
 		
 		if( intensity > 16) intensity = 16		
-		if( intensity <= 0 ) g_lightnings = {}
+		if( intensity <= 0 ) g_lightnings = {}		
+		
+		if g_thunder_timer > 0 then
+			g_thunder_timer -= 1
+			if( g_thunder_timer <=0) then
+				sfx(1,0)
+			end
+		end
 		
 		if( intensity > g_light_level ) set_pal( light_lv_pals[intensity] );
 end
