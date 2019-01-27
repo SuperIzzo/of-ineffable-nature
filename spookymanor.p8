@@ -320,7 +320,7 @@ function actor_action(actor, attack)
 					if attack and e.on_attack then
 						return e.on_attack(actor)
 					elseif e.on_use then
-						return e.on_use(actor)
+						return e.on_use(e, actor)
 					end
 				end
 			end			
@@ -855,6 +855,12 @@ function update_ent(e)
     end
 end
 
+function action_text(text)
+	return function(e,a)
+		text_add(text)
+	end
+end
+
 
 s_chair 					= 109
 s_table 					= 77
@@ -985,13 +991,8 @@ function add_area_f1_main_bedroom()
 
     add_ent(area,	2,	34,		s_chair)
     local e = add_ent(area,	3,	34,		s_table)
-	e.on_use = function(a)
-		text_add("irene used the table, but nothing happened")
-	end
-	
-	e.on_attack = function(a)
-		text_add("irene attacked the table, the table is hurt - emotionally")
-	end
+	e.on_use = action_text("irene used the table, but nothing happened")
+	e.on_attack = action_text("irene used the table, but nothing happened")
 	
     add_ent(area,	4,	34,		s_chair, false, false, true)
     
