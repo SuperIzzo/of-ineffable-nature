@@ -152,6 +152,12 @@ end
 
 function _draw()
 
+	set_light_level(nil)
+	
+	set_light_level(5)		
+	
+	if( rnd(50) < 1 ) add_lightning( 10, 16 )
+	
     --clear the screen first
     if not pause_game_for_warp or just_teleported then
         cls()
@@ -237,12 +243,84 @@ function _draw()
         print("game over", camera_x+48, camera_y+64, 7)
     end
 
+	draw_lightnings()
+	
     local cx = (pl.x / 8)
     local cy = (pl.y / 8) + 0.75
     print("world x "..pl.x  ..","..pl.y,camera_x,camera_y+5,7)
     print("map x "..cx  ..","..cy,camera_x,camera_y+15,7)
     print("s"..current_flow_state.."."..flow_states[current_flow_state].stage ,camera_x + 100,camera_y,7)
    --print("fps "..stat(7) ,camera_x + 100,camera_y,7)
+end
+
+
+-- ########################################################################
+--                          light functions     start
+-- ########################################################################
+dark0_pal 		= {0,0,0,1,   2,1,1,13,   2,2,4,3,   1,1,1,14}
+dark1_pal 		= {0,0,0,1,   2,1,1,5,      2,2,5,1,   1,1,1,5}
+dark2_pal 		= {0,0,0,0,   2,0,1,5,      2,2,5,1,   1,1,2,5}
+light2_pal 		= { 5, 6,14, 7,    7, 7, 7, 7,    14, 7, 7, 7,   7, 6, 7,7}
+
+light_lv_pals	= 
+{
+	dark2_pal, dark2_pal, dark1_pal, dark1_pal, 
+	dark0_pal, dark0_pal, nil, nil,
+	nil, nil, nil, nil,
+	nil, light2_pal, light2_pal, light2_pal
+}
+
+g_light_default = 8
+g_light_level = 8
+g_lightnings = {}
+g_thunder_timer = 0
+
+function set_pal(p)
+	for i =0,15 do
+		local c = (p and p[i+1]) or i
+		pal(i,c,1)
+	end
+end
+
+function set_light_level(lv)
+	g_light_level = lv or g_light_default
+	set_pal( light_lv_pals[g_light_level] )
+end
+
+function add_lightning(duration, intensity)
+	local lightning = {}
+	lightning.intensity = intensity
+	lightning.time = duration
+	lightning.timer = duration	
+	
+	add(g_lightnings, lightning)
+	
+	if( g_thunder_timer <= 0) g_thunder_timer = duration * 5
+	
+	return lightning
+end
+
+function draw_lightnings()
+		local intensity = 0
+		for lightning in all(g_lightnings) do			
+			lightning.timer -= 1
+			
+			if (lightning.timer < 0) lightning.timer = 0
+			
+			intensity += lightning.intensity * lightning.timer / lightning.time
+		end
+		
+		if( intensity > 16) intensity = 16		
+		if( intensity <= 0 ) g_lightnings = {}		
+		
+		if g_thunder_timer > 0 then
+			g_thunder_timer -= 1
+			if( g_thunder_timer <=0) then
+				sfx(1,0)
+			end
+		end
+		
+		if( intensity > g_light_level ) set_pal( light_lv_pals[intensity] );
 end
 
 -- ########################################################################
@@ -933,7 +1011,7 @@ function add_door( area, x,y, spwall, boarded)
 			self.triggered = true
 		else 
 			local msg = self.blocker.block_text or 
-			"the door appears to be locked. maybe i can find a key"
+			"the door appears to be locked. maybe i can find a key."
 			text_add(msg)
 		end
 		
