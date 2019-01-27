@@ -1,8 +1,8 @@
 pico-8 cartridge // http://www.pico-8.com
 version 16
 __lua__
--- spookymanor
--- team spook
+-- Of Ineffable Nature
+-- Team Spook
 
 flag_collision = 6
 flag_anim_end = 0
@@ -17,6 +17,9 @@ g_anim_update_interval = 5
 
 -- global frame count 
 g_frame = 0
+
+g_player_died = false
+g_died_init = false
 
 g_drawing_text = false
 g_text_waiting_on_input = false
@@ -47,9 +50,45 @@ function _init()
 
     add_game_maps()
     add_teleporters()
+
+    mon = add_actor(38,328,1)
+
+    -- Play rain loop
+    sfx(0, 3)
+
+    -- Music has the two middle channels
+    music(0, 0, 12)
 end
 
 function _update()
+
+    if pl.health <= 0 then
+        g_player_died = true
+    end
+
+    if g_player_died then
+        if not g_died_init then
+            g_died_init = true
+            
+            -- Stop the rain, start the dead sound
+            sfx(-1, 3)
+            music(-1, 300)
+
+            sfx(15)
+
+            wait(15)
+
+            pause_game_for_warp = true
+            fade_screen_x = 0
+            fade_screen_y = 0
+
+        end
+
+        if fade_screen_y >= 127 then
+            wait(15)
+            run()
+        end
+    end
 
     if not pause_game_for_warp then
         if not g_drawing_text then 
@@ -103,12 +142,14 @@ function _draw()
         g_draw_before_player = true
 
         local visible_areas = {}
+        local drawn_areas = {}
 
         -- loop through areas, if they can show, draw the map
         for m in all(areas) do
             m.linkshow = false
             if m.show then 
                 add(visible_areas, m)
+                add(drawn_areas, m)
             end
         end
         
@@ -124,14 +165,22 @@ function _draw()
                     if draw then
                         m.links[lm].linkshow = true
                         draw_map_area(m.links[lm])
+                        add(drawn_areas, m.links[lm])
                     end
                 end
             end
         end
 
-        foreach(actors, draw_actor)
+        for a in all(actors) do
+            draw_actor(a, drawn_areas, false)
+        end
 
+        draw_actor(pl, drawn_areas, true)
         g_draw_before_player = false
+
+        for a in all(actors) do
+            draw_actor(a, drawn_areas, false)
+        end
 
         -- draw this a second time, but because we're drawing after the player now, only entities 
         --  on a lower y axis to the player will be drawing
@@ -158,8 +207,14 @@ function _draw()
         draw_teleport_warp()
     end
 
-    --local cx = (pl.x / 8)
-    --local cy = (pl.y / 8) + 0.75
+    if g_player_died then
+        rectfill(camera_x+44,camera_y+60,camera_x+87,camera_y+72, 0)
+        rect(camera_x+44,camera_y+60,camera_x+87,camera_y+72, 6)
+        print("game over", camera_x+48, camera_y+64, 7)
+    end
+
+    local cx = (pl.x / 8)
+    local cy = (pl.y / 8) + 0.75
    -- print("world x "..pl.x  ..","..pl.y,camera_x,camera_y+100,7)
     --print("map x "..cx  ..","..cy,camera_x,camera_y+110,7)
 
@@ -187,13 +242,15 @@ function pl_move()
     -- down
     if (btn(3)) y = 1
 
+    pl.attack = btnp(5)
+    pl.use = btnp(5)
+
+
     if not just_teleported then
         add_force_to_actor(pl,x,y)
     else
         if (y == 0) just_teleported = false
     end
-
-    
 
     camera_x = pl.x - 64
     camera_y = pl.y - 64
@@ -328,16 +385,20 @@ function add_actor(x,y,at)
     a.x = x
     a.y = y
 
-    --a.cx = 0
-    --a.cy = 0
-    --a.mx = 0
-    --a.my = 0
+    a.attack = false
+    a.use = false
+
+    a.health = 100
+
+    a.inSameMapAsPlayer = false
 
     a.anim = { }
 
     -- if this is a player, setup the player anims
     if at == 0 then
-       setup_pl_anims(a)
+        setup_pl_anims(a)
+    elseif at == 1 then
+        setup_mon_anims(a)
     end
 
     -- physics delta speed variables.
@@ -387,10 +448,13 @@ function add_force_to_actor(a,x,y)
 
     -- movement physics below
 
+    local speed = g_speed_accel
+
+    if (not a.isplayer) speed *= 0.3
 
     -- apply global acceleration depending on desired x/y
-    a.dx += g_speed_accel * x
-    a.dy += g_speed_accel * y
+    a.dx += speed * x
+    a.dy += speed * y
 
 
     -- animation selection below
@@ -411,22 +475,94 @@ function add_force_to_actor(a,x,y)
 
 end
 
+function math_lerp(a,b,t)
+    return a + t * (b - a)
+end
+
 function update_actor(a)
 
-    if (a.isplayer) pl_move(a)
+    if a.isplayer then 
+        pl_move(a)
+    else
+        -- VERY simple follow because ghost - maybe change the dist to a LOS check
+        if a.inSameMapAsPlayer or dist(a.x, a.y, pl.x, pl.y) < 32 then
+
+            local x = 0
+            local y = 0
+
+            -- Send in the direction to move to get to the player. Gate behind
+            --  abs 0.2 check to fix flickering when on the same axis
+            if abs(pl.x - a.x) > 0.2 then
+                if  pl.x - a.x > 0 then
+                    x = 1
+                elseif pl.x - a.x < 0 then
+                    x = -1
+                end
+            end
+
+            if abs(pl.y - a.y) > 0.2 then
+                if pl.y - a.y > 0 then
+                    y = 1
+                elseif pl.y - a.y < 0 then
+                    y = -1
+                end
+            end
+
+            add_force_to_actor(a, x, y)
+
+        end
+    end
 
     -- convert to world from cell, divide by 8 (due to 1 map cell being 8x8)
     local cx = (a.x / 8)
     local cy = (a.y / 8) + 0.75
 
-    if not is_map_solid(cx, cy, a.dx, a.dy) then
+    if not a.isplayer or not is_map_solid(cx, cy, a.dx, a.dy) then
         a.x += a.dx
         a.y += a.dy
     end
 
 end
 
-function draw_actor(a)
+function draw_actor(a, drawn_areas, drawPlayer)
+
+    if not a.isplayer then
+
+        -- wait until after the player has drawn if this entity would be on top
+        --  or always drawing on top, don't draw before
+        if g_draw_before_player then
+            if(a.y > pl.y) return
+        else
+            -- then if we drew on bottom don't draw on top
+            if(a.y <= pl.y) return
+        end
+        
+        local cx = flr((a.x / 8))
+        local cy = flr((a.y / 8) + 0.75)
+
+        local inVisibleMap = false
+
+        a.inSameMapAsPlayer = false
+
+        for m in all(drawn_areas) do
+            if cx >= m.minx and cx <= m.maxx and cy >= m.miny and cy <= m.maxy then
+                inVisibleMap = true
+
+                -- Hacky and lazy way but easy
+                local pcx = flr((pl.x / 8))
+                local pcy = flr((pl.y / 8) + 0.75)
+
+                if pcx >= m.minx and pcx <= m.maxx and pcy >= m.miny and pcy <= m.maxy then
+                    a.inSameMapAsPlayer = true
+                end
+            end
+        end
+
+        if (not inVisibleMap) return
+        
+    elseif not drawPlayer then
+        return
+    end
 
     local dir = a.dir*2
 
@@ -597,7 +733,7 @@ end
 
 function add_game_maps()
 
--- first floor placement
+    -- first floor placement
 
     --    rooms                             player xy       cell xy
     local ff_main_bedroom = add_map_area(   0,27,13,39,     0,27,13,36)
@@ -631,7 +767,7 @@ function add_game_maps()
 
     local ff_bedroom_door = add_ent(9,12, 73,89, ff_main_bedroom)
     ff_bedroom_door.type = 2
-    ff_bedroom_door.triggered = true
+    ff_bedroom_door.triggered = true --TODO remove
 
     add_map_link(ff_main_bedroom, ff_corridor, ff_bedroom_door)
     add_map_link(ff_bathroom, ff_corridor)
@@ -659,7 +795,7 @@ function add_game_maps()
 
 
 
--- ground floor placement
+    -- ground floor placement
 
 
 
@@ -708,7 +844,7 @@ function add_teleporters()
 end
 
 function process_teleporting()
-    if fade_screen_y >= 127 then
+    if fade_screen_y >= 127 and not g_player_died then
 
         pl.x = teleporter_using.desx * 8
         pl.y = teleporter_using.desy * 8
@@ -730,6 +866,7 @@ end
 
 function draw_teleport_warp()
     if fade_screen_y <= 127 and fade_screen_y >= 0 then
+        
         
         if (fade_screen_frame_time < 1) fade_screen_frame_time+=1 return
 
@@ -1213,8 +1350,8 @@ __sfx__
 010400070361003610026100261001610016100261002610066000560005600056000560004600046000360003600036000260002600026000360003600036000360005600056000560006600066000860008604
 01050020176430e63011626146201662400000126341663416630116331762014620136331263011620106230e6100f6100e610106100f6100e6100c6100b6100961007610056100461002610006100061000610
 01040000217160001513000130001300000000025000c500100001000010000000000550010500130001300013000000000560006600000000000000000000000000000000000000000000000000000000000000
-011e00201355413541135311352113511135111351113515185541854118531185211851118511185111851517554175411753117521175111751117511175151155411541115311152111511115111151111515
-012d00200755407555000000000011534105220e5120e5150c5540c5550000000000105340e5220c5120c5150b5540b55500000000000b5340952207512075150555405555000000000004524045250853408535
+013c00201353413521135111351113511135111351113515185341852118511185111851118511185111851517534175211751117511175111751117511175151153411521115111151111511115111151111515
+013c00200705407045000000000011054100420e0420e0450c0440c0350000000000100540e0420c0420c0450b0440b03500000000000b0540904207042070450504405035000000000004054040450804408045
 011000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -1233,6 +1370,6 @@ __sfx__
 01100008007150060502715006000071500600027150000009700000000a700000000b700000000a7000000015700000000000000000000000000000000000000000000000000000000000000000000000000000
 010800001705500005160550000515055000051405500005130550000512055000051105500005100550d0050f0550f0050e055110050c0550d0050b0550f0050a05511005090551300508055150050705207055
 __music__
-01 03414240
-02 04424344
+02 43040343
+02 43424344
 
