@@ -300,6 +300,33 @@ end
 --                          player functions     start
 -- ########################################################################
 
+function actor_facing_entity(actor, e)
+	local action_dist = 8	
+	if( abs(actor.x - e.x) + abs(actor.x - e.x) > action_dist ) return false
+	if( actor.x < e.x and actor.dir == 3) return false
+	if( actor.x > e.x and actor.dir == 1) return false
+	if( actor.y < e.y and actor.dir == 4) return false
+	if( actor.y > e.y and actor.dir == 2) return false
+	return true
+end
+
+function actor_action(actor, attack)		
+	for m in all(areas) do
+		if m.show then
+			for e in all(m.entities) do
+				if actor_facing_entity(actor, e) then
+					if attack and e.on_attack then
+						return e.on_attack(actor)
+					elseif e.on_use then
+						return e.on_use(actor)
+					end
+				end
+			end			
+		end
+	end
+	
+end
+
 function pl_move()
     local x = 0
     local y = 0
@@ -316,9 +343,8 @@ function pl_move()
     -- down
     if (btn(3)) y = 1
 
-    pl.attack = btnp(5)
+	pl.attack = btnp(4)
     pl.use = btnp(5)
-
 
     if not just_teleported then
         add_force_to_actor(pl,x,y)
@@ -329,6 +355,7 @@ function pl_move()
     camera_x = pl.x - 64
     camera_y = pl.y - 64
 
+	if (pl.use or pl.attack) actor_action(pl, pl.attack)
 end
 
 --- ########################################################################
@@ -914,7 +941,15 @@ function add_area_f1_main_bedroom()
     add_ent(area,	3,	31,		s_small_table)
 
     add_ent(area,	2,	34,		s_chair)
-    add_ent(area,	3,	34,		s_table)
+    local e = add_ent(area,	3,	34,		s_table)
+	e.on_use = function(a)
+		text_add("irene used the table, but nothing happened")
+	end
+	
+	e.on_attack = function(a)
+		text_add("irene attacked the table, the table is hurt - emotionally")
+	end
+	
     add_ent(area,	4,	34,		s_chair, false, false, true)
     
     add_ent(area,	6,	30,		s_shelf_top)
