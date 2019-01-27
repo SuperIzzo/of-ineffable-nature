@@ -48,12 +48,11 @@ fade_screen_frame_time = 0
 function _init()
 
     --mon = add_actor(38,328,1)
-    pl = add_actor(208,330,0) --pixels
-    --pl = add_actor(24,256,0) --pixels
+    --pl = add_actor(208,330,0) --pixels
+    pl = add_actor(24,256,0) --pixels
     pl.isplayer = true
     
     add_game_maps()
-    add_teleporters()
     init_channel_two_sfx()
 
     init_flow()
@@ -158,6 +157,11 @@ function _draw()
         cls()
         
         camera(camera_x, camera_y)
+
+        if not can_flow_render() then
+            if (g_drawing_text) text_draw()
+            return
+        end
 
         g_draw_before_player = true
 
@@ -312,7 +316,7 @@ function actor_facing_entity(actor, e)
 	return true
 end
 
-function actor_action(actor, attack)		
+function actor_action(actor, attack)
 	for m in all(areas) do
 		if m.show then
 			for e in all(m.entities) do
@@ -359,7 +363,9 @@ function pl_move()
     camera_x = pl.x - 64
     camera_y = pl.y - 64
 
-	if (pl.use or pl.attack) actor_action(pl, pl.attack)
+    if not g_drawing_text then
+	    if (pl.use or pl.attack) actor_action(pl, pl.attack)
+    end
 end
 
 --- ########################################################################
@@ -1178,42 +1184,64 @@ current_flow_state = 1
 -- 1 = Bedroom wakeup (no player control)
 -- 2 = Go to the storage for a fuse
 
-function flow_init_common()
+function can_flow_render()
+    if current_flow_state == 1 then
+        return (flow_states[current_flow_state].frametime > 270)
 
+    end
+
+    return true
+end
+
+function flow_init_common()
+    flow_states[current_flow_state].frametime = 0
     flow_states[current_flow_state].stage += 1
 end
 function flow_update_common()
-
+    if (not g_drawing_text) flow_states[current_flow_state].frametime += 1
 end
 function flow_exit_common()
     current_flow_state += 1
 end
 
 ambience_initialised = false
-function flow_init_ambience()
+music_initialised = false
+function flow_init_ambience(playmusic)
     
-    if (ambience_initialised) return
-    ambience_initialised = true
-
     -- play rain loop, has the 3rd channel
-    --sfx(0, 2)
-
+    if (not ambience_initialised) sfx(0, 2) ambience_initialised = true
+    
     -- music has the 4th channel
-    --music(0, 0, 8)
+    if (playmusic and not music_initialised) music(0, 0, 8) music_initialised = true
+
 end
 
 function flow_1_init()
     flow_init_ambience()
     
-    
-
 end
 function flow_1_update()
 
-
-    --Reached the end of flow 1
-    flow_states[current_flow_state].stage += 1
+    if flow_states[current_flow_state].frametime == 90 then
+        sfx(12, 0)
+    end
     
+    if flow_states[current_flow_state].frametime == 150 then
+        text_add("._._.", false, true, true)
+    end
+
+    if flow_states[current_flow_state].frametime == 180 then
+        text_add("was that glass breaking?_____ ugh _____i don't want to get out of bed_._._._", false, true, true)
+    end
+
+    if flow_states[current_flow_state].frametime == 240 then
+        text_add("but_._._.____ i suppose i should go check that out_._._._", false, true, true)
+    end
+
+    if flow_states[current_flow_state].frametime > 270 then
+        --Reached the end of flow 1
+        flow_states[current_flow_state].stage += 1
+    end
 end
 function flow_1_exit()
 
@@ -1221,18 +1249,22 @@ end
 
 function flow_2_init()
     -- As we can skip the intro on a death, init ambience if done so
-    flow_init_ambience()
+    flow_init_ambience(true)
 
-    f1_bedroom_door.triggered = true
 
-    add_teleporter(25,44, 27,44,  26,42, true, true, "i should find some fuses to start the generator on this level_._._.")
+    -- 1st to 2nd floor
     add_teleporter(30,44, 32,44,  31,42, true, true, "i should find some fuses to start the generator on this level_._._.")
+
+    -- 1st to ground floor
+    add_teleporter(25,44, 27,44,  26,42, true, true, "i should find some fuses to start the generator on this level_._._.")
 
 end
 function flow_2_update()
 
-    
-
+    -- Unlocking the bedroom door when getting near
+    if not f1_bedroom_door.triggered then
+        if (dist(pl.x,pl.y, 72,281) < 16) f1_bedroom_door.triggered = true
+    end
 end
 function flow_2_exit()
 
@@ -1243,6 +1275,15 @@ end
 
 function flow_3_init()
     
+    -- 2nd to 1st floor
+    add_teleporter(25,19, 27,19,  26,43, false)
+
+    -- 1st to 2nd floor
+    add_teleporter(30,45, 32,45,  75,19, false)
+	
+    -- 1st to ground floor
+    add_teleporter(25,44, 27,44,  31,42, true, true, "i needed to find that battery on the floor above_._._.")
+
 end
 function flow_3_update()
 
@@ -1269,10 +1310,26 @@ function flow_5_update()
 end
 function flow_5_exit()
 
+    -- Remove ground blocking
+    remove_teleporter(25,44)
+    
 end
 
 function flow_6_init()
     
+    -- 1st to ground floor
+    add_teleporter(25,44, 27,44,  26,17, false)
+
+    -- ground to 1st floor
+    add_teleporter(74,21, 76,21,  31,43, false)
+	
+    -- ground to basement floor
+    add_teleporter(79,20, 81,20,  68,32, true)
+
+    -- basement to ground floor
+    add_teleporter(67,30, 69,30,  80,19, false)
+
+
 end
 function flow_6_update()
 
@@ -1300,15 +1357,17 @@ function add_flow_state(init,update,exit)
     f.func_update = update
     f.func_exit = exit
 
+    f.frametime = 0
+
     add(flow_states, f)
 end
 
 
 function init_flow()
 
-    if stat(4) == "nointro" then
+    --if stat(4) == "nointro" then
         current_flow_state = 2
-    end
+    --end
 
     add_flow_state(flow_1_init, flow_1_update, flow_1_exit)
     add_flow_state(flow_2_init, flow_2_update, flow_2_exit)
@@ -1367,27 +1426,6 @@ function remove_teleporter(minx,miny)
             return
         end
     end
-end
-
-function add_teleporters()
-    
-    -- 2nd to 1st floor
-    --add_teleporter(25,19, 27,19,  26,43, false)
-
-    -- 1st to 2nd floor
-    --add_teleporter(30,45, 32,45,  75,19, false)
-	
-    -- 1st to ground floor
-    --add_teleporter(25,44, 27,44,  26,17, false)
-
-    -- ground to 1st floor
-    --add_teleporter(74,21, 76,21,  31,43, false)
-	
-    -- ground to basement floor
-    --add_teleporter(79,20, 81,20,  68,32, true)
-
-    -- basement to ground floor
-    --add_teleporter(67,30, 69,30,  80,19, false)
 end
 
 function warp_player()
@@ -1568,20 +1606,36 @@ function text_update()
             -- wait for button input before we unpause the game
             g_text_waiting_on_input = (not btn(4))
 
-            if g_text_waiting_on_input then
+            if g_text_wait_at_end and g_text_waiting_on_input then
                 return
             end
 
-            --then del all the queued text and reset
-            for i=1, #text_queue[1] do
-                del(text_queue, text_queue[1][i])
+            if not g_text_wait_at_end then
+                if not g_text_end_delay_started then
+                    text_displaytimer = 0
+                    g_text_end_delay_started = true
+                end
+
+                local delay_amount = 15 + g_text_length * 2
+
+                if (text_displaytimer < delay_amount) then
+                    text_displaytimer+=1 
+
+                    if text_displaytimer < (delay_amount) / 2 or not g_text_waiting_on_input then
+                        return
+                    end
+                end
             end
+
+            text_displaying = {}
+            text_queue = {}
 
             text_displayline = 1
             text_displaychar = 1
             text_actualchar = 1
             text_displaytimer = 0
 
+            g_text_end_delay_started = false
             g_drawing_text = false
             g_text_is_diary = false
 
@@ -1624,16 +1678,20 @@ function text_update()
 
     text_displaychar += 1
     text_actualchar += 1
+
+    sfx(2, 0)
     
 end
 
-function text_add(str, d)
+function text_add(str, diary, dont_wait_at_end, add_flow_frame)
 
     local textlines = {}
 
     local char = ""
     local word = ""
     local line = ""
+
+    g_text_length = 0
 
     local line_limit = 26
     if (d) line_limit = 24
@@ -1656,6 +1714,8 @@ function text_add(str, d)
         
         char = sub(str,i,i)
         word = word ..char
+
+        g_text_length += 1
         
         --if we've encountered a space
         if (char == " ") addtoline()
@@ -1674,10 +1734,13 @@ function text_add(str, d)
         add(text_displaying,"")
     end
 
+    g_text_wait_at_end = not dont_wait_at_end
     g_drawing_text = true
-    g_text_is_diary = d
+    g_text_is_diary = diary
 
     text_displaytimer = 0
+
+    if (add_flow_frame) flow_states[current_flow_state].frametime += 1
 
     pl.dx = 0
     pl.dy = 0
@@ -1745,7 +1808,7 @@ function text_draw()
 
     clip()
 
-    if g_text_waiting_on_input then
+    if g_text_waiting_on_input and g_text_wait_at_end then
         text_displaytimer += 1
 
         -- blinking text prompt display
