@@ -1157,7 +1157,7 @@ function add_generator(area, floor,	 x, y)
 	end
 	
 	function generator:switch()
-		if self.triggered then 
+		if self.triggered and current_flow_state >= 4 then 
 			self.power_level = 30 * 30
 			self.light = not self.light
 		end
@@ -1384,9 +1384,10 @@ function add_area_f1_storage()
                     -- adding fuel
                     if current_flow_state == 4 then
                         text_for_flow_4_generator_fueled()
-                        
+                        f1_generator.power_level = 1000
                     else
                         text_add("sweet!___ h_m_m_m___ doesn't appear to be working__.__.__._____ ah yes, probably needs some fuel. ____ i think there was some upstairs in the room being constructed.")
+                        f1_generator.power_level = 0
                     end
                 else
                     text_add("i need the fuses in the cupboard just over there to get this running.")
@@ -1436,7 +1437,9 @@ function add_area_f2_construction_b()
                 if self.blocker.triggered then
                     if (#g_lightnings == 0) sfx(8, 0)
                     self.triggered = true
-
+                    f2_generator.power_level = 1000
+                    f2_generator.light = true
+                    f2_generator.power_leak = true
                     text_for_flow_4_generator_fueled()
                 else
                     text_add("i need to find the fuel first_._._.___ should be somewhere around here.")
@@ -1462,7 +1465,7 @@ function add_area_f0_garage()
             if (#g_lightnings == 0) sfx(8, 0)
             g_player_collected_axe = true
             self.triggered = true
-            add_monster_actor(73, 10, 3)
+            add_monster_actor(73*8, 10*8, 3)
         end
 		return true
 	end
@@ -1482,6 +1485,10 @@ function add_area_f0_kitchen()
 		if not self.triggered and fb_generator.triggered then
             if (#g_lightnings == 0) sfx(8, 0)
             self.triggered = true
+            fb_generator.power_level = 1000
+            fb_generator.light = true
+            fb_generator.power_leak = true
+            
         end
 		return true
 	end
@@ -1831,8 +1838,8 @@ function flow_3_init()
 
     firstmonster = add_monster_actor(242, 327, 3)
 
-    add_monster_actor(1, 4, 3)
-    add_monster_actor(37, 8, 3)
+    add_monster_actor(1*8, 4*8, 3)
+    add_monster_actor(37*8, 8*8, 3)
 
 end
 function flow_3_update()
@@ -1864,7 +1871,7 @@ function flow_4_init()
     add_teleporter(25,44, 27,44,  26,42, true, true, "i have the fuel, need to put it on the generators up here_._._.")
 
     f1_generator.triggered = false
-
+    f2_generator.triggered = false
 end
 function flow_4_update()
 
@@ -1885,7 +1892,7 @@ function flow_5_init()
     add_teleporter(25,44, 27,44,  75,19, false)
 
     -- ground to 1st floor
-    add_teleporter(74,21, 76,21,  31,43, false)
+    add_teleporter(74,21, 76,21,  26,43, false)
 	
     -- ground to basement floor
     add_teleporter(79,20, 81,20,  68,32, true)
@@ -1914,8 +1921,9 @@ end
 function flow_6_update()
 
     -- walk into office
-    if flow_states[current_flow_state].stage_internal == 0 then
-        if dist(pl.x,pl.y,f0_office_door.x, f0_office_door.y+8) < 8 then
+    if get_pl_floor() == 0 and flow_states[current_flow_state].stage_internal == 0 then
+        local distanceToBoss = dist(pl.x,pl.y,f0_office_door.x, f0_office_door.y+8)
+        if distanceToBoss > 0 and distanceToBoss < 8 then
             --start the end "cutscene"
             flow_states[current_flow_state].stage_internal += 1
             do_lightning_long()
