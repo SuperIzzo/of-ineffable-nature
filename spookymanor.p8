@@ -1645,7 +1645,7 @@ function f2u()
 
             pl.frame = 1
         end
-    elseif not f2lf then
+    elseif f2lf then
 
         if f_s[cfs].ft == 5 then
             text_add("aaaaaaaaaaaggggghhhh!", false, true, true, true)
