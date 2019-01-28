@@ -6,7 +6,7 @@ __lua__
 
 ggen = {}
 
-g_player_died = false
+gpld = false
 g_died_init = false
 
 g_drawing_text = false
@@ -17,18 +17,18 @@ dbfp = false
 
 mspl = true
 
-camera_x = 0
-camera_y = 0
+camx = 0
+camy = 0
 
 atrs = {}
 areas = {}
-text_queue = {}
-text_displaying = {}
+t_qq = {}
+t_dis = {}
 
 jtel = false
 psgfw = false
-fade_screen_x = 0
-fade_screen_y = 0
+fscx = 0
+fscy = 0
 fsftm = 0
 
 haxe = false
@@ -55,7 +55,7 @@ function _update()
     update_flow()
 
     if pl.health <= 0 then
-        g_player_died = true
+        gpld = true
     else
         if mspl then 
             if current_sfx == sfx_enemy_close or current_sfx == sfx_enemy_very_close then
@@ -70,7 +70,7 @@ function _update()
         end
     end
 
-    if g_player_died then
+    if gpld then
         if not g_died_init then
             g_died_init = true
             
@@ -83,12 +83,12 @@ function _update()
             wait(15)
 
             psgfw = true
-            fade_screen_x = 0
-            fade_screen_y = 0
+            fscx = 0
+            fscy = 0
 
         end
 
-        if fade_screen_y >= 127 then
+        if fscy >= 127 then
             wait(15)
             printh('nointro', '@clip')
 
@@ -107,7 +107,7 @@ function _update()
         local cy = flr((pl.y / 8) + 0.75)
 
         for m in all(areas) do
-			foreach(m.entities, update_ent)
+			foreach(m.ents, update_ent)
 			
             if cx >= m.minx and cx <= m.maxx and cy >= m.miny and cy <= m.maxy then
                 if(not m.entered) entered_area(m)                
@@ -121,16 +121,16 @@ function _update()
                 
                 if not psgfw then
                     psgfw = true
-                    fade_screen_x = 0
-                    fade_screen_y = 0
+                    fscx = 0
+                    fscy = 0
 
-                    teleporter_using = t
+                    t_u = t
                     return
                 end
             end
         end
     else
-        process_teleporting()
+        pro_t()
     end
 		
 	local floor = get_pl_floor()
@@ -143,14 +143,14 @@ function _draw()
     if not psgfw or jtel then
         cls()
         
-        camera(camera_x, camera_y)
+        camera(camx, camy)
 
         if not can_flow_render() then
             if (g_drawing_text) draw_lightnings() text_draw() 
             return
         end
 
-        if not g_player_died and not g_drawing_text and f2lf then
+        if not gpld and not g_drawing_text and f2lf then
             lightning_chance_timer += 1
         
             if (cfs == 6) lightning_chance_timer += 4
@@ -231,10 +231,10 @@ function _draw()
         draw_teleport_warp()
     end
 
-    if g_player_died then
-        rectfill(camera_x+44,camera_y+60,camera_x+87,camera_y+72, 0)
-        rect(camera_x+44,camera_y+60,camera_x+87,camera_y+72, 6)
-        print("game over", camera_x+48, camera_y+64, 7)
+    if gpld then
+        rectfill(camx+44,camy+60,camx+87,camy+72, 0)
+        rect(camx+44,camy+60,camx+87,camy+72, 6)
+        print("game over", camx+48, camy+64, 7)
     end
 
 	if	g_temp_effect_palette and g_temp_effect_palette:tick() then
@@ -411,7 +411,7 @@ end
 function atr_action(atr, attack)
 	for m in all(areas) do
 		if m.show or m.linkshow then
-			for e in all(m.entities) do
+			for e in all(m.ents) do
 				if atr_facing_entity(atr, e) then
 					local result = false
 					if attack and e.on_attack then
@@ -457,8 +457,8 @@ function pl_move()
         if (y == 0) jtel = false
     end
 
-    camera_x = pl.x - 64
-    camera_y = pl.y - 64
+    camx = pl.x - 64
+    camy = pl.y - 64
 
     if not g_drawing_text then
 	    if (pl.use or pl.attack) atr_action(pl, pl.attack)
@@ -675,7 +675,7 @@ function process_atr_ai(a)
         a.smp = true
     end
 
-    if cfs == 6 and f_s[cfs].stage_internal != 2 then
+    if cfs == 6 and f_s[cfs].s_int != 2 then
         return
     end
 
@@ -762,7 +762,7 @@ function update_atr(a)
 
             if a.is_boss then
             
-                f_s[cfs].stage_internal = 3
+                f_s[cfs].s_int = 3
             end
 
             stop_sfx(sfx_enemy_very_close, a)
@@ -845,11 +845,11 @@ function draw_atr(a, drawn_areas, drawplayer)
 
 end
 
-function add_ent_blocker(e, b)
+function aent_blocker(e, b)
     e.blocker = b
 end
 
-function add_ent_alt_sprite(e,s)
+function aent_alt_sprite(e,s)
     e.spralt = s
 end
 
@@ -857,11 +857,11 @@ function disable_ent_collision(e)
     e.coll = false
 end
 
-function add_ent_for_draw_order(e, y)
+function aent_for_draw_order(e, y)
     e.ovr_y_draw_order = y
 end
 
-function add_ent(m, x,y,sp,ontop,drawblack,fliph,flipv)
+function aent(m, x,y,sp,ontop,drawblack,fliph,flipv)
     local e = {}
 
     e.x = x * 8
@@ -880,7 +880,7 @@ function add_ent(m, x,y,sp,ontop,drawblack,fliph,flipv)
 
     e.ovr_y_draw_order = 0
 
-    add(m.entities,e)
+    add(m.ents,e)
 
     return e
 end
@@ -968,16 +968,16 @@ s_wall_stripe			= 80
 s_wall_gray			= 84
 
 function add_door( area, x,y, spwall, boarded)
-	local ceil = add_ent(area, x,y-1,  {spwall, 119}, false, true)
-    local ceil2 = add_ent(area, x+1,y-1,  {spwall, 119}, true, true)
+	local ceil = aent(area, x,y-1,  {spwall, 119}, false, true)
+    local ceil2 = aent(area, x+1,y-1,  {spwall, 119}, true, true)
     disable_ent_collision(ceil)
 	disable_ent_collision(ceil2)
 
-	local door = add_ent(area, x,y, s_door)	
+	local door = aent(area, x,y, s_door)	
     door.type = 2
 	
 	if boarded then
-		door.blocker = add_ent(area, x,y, s_door_boards)
+		door.blocker = aent(area, x,y, s_door_boards)
         door.blocker.type = 1
 		door.blocker.triggered = false
 		door.blocker.boards = true		
@@ -1010,7 +1010,7 @@ function add_door( area, x,y, spwall, boarded)
         return true
     end
 	
-    add_ent_for_draw_order(ceil, door.y)
+    aent_for_draw_order(ceil, door.y)
 
 	return door
 end
@@ -1036,7 +1036,7 @@ function add_generator(area, floor,	 x, y)
 	min_lights[1] = 4
 	min_lights[2] = 3
 	
-	local generator = add_ent(area, x, y,		s_generator)	
+	local generator = aent(area, x, y,		s_generator)	
 	generator.power_level = 0
 	generator.power_leak = true
 	generator.min_light = min_lights[floor]
@@ -1087,7 +1087,7 @@ end
 
 
 function add_lswitch(area, floor,	 x, y)
-	local lswitch = add_ent(area, x, y,		draw_switch)
+	local lswitch = aent(area, x, y,		draw_switch)
 	
 	lswitch.floor = floor
 	
@@ -1123,7 +1123,7 @@ function add_map_area(minx,miny,maxx,maxy,cx,cy,cex,cey)
     a.show = false
     a.linkshow = false
 
-    a.entities = {}
+    a.ents = {}
     a.links = {}
     a.linkblockers = {}
 
@@ -1151,29 +1151,26 @@ end
 
 function draw_map_area(m)
     if (dbfp) map(m.cx,m.cy, m.cx*8,m.cy*8, m.cex - m.cx,m.cey - m.cy)
-    foreach(m.entities, draw_ent)
+    foreach(m.ents, draw_ent)
 end
 
 
 function add_area_f1_main_bedroom()
 	local area = add_map_area(   0,27,13,39,     0,27,13,36)	 
 
-    add_ent(area,	3,	31,		s_small_table)
+    aent(area,	3,	31,		s_small_table)
 
-    add_ent(area,	2,	34,		s_chair)
-    local e = add_ent(area,	3,	34,		s_table)
+    aent(area,	2,	34,		s_chair)
+    local e = aent(area,	3,	34,		s_table)
 
-	e.on_use = action_text("irene attacked the table and hurt it_._._. emotionally")
-	e.on_attack = action_text("irene used the table, but nothing happened")
-	
-    add_ent(area,	4,	34,		s_chair, false, false, true)
+    aent(area,	4,	34,		s_chair, false, false, true)
     
-    add_ent(area,	6,	30,		s_shelf_top)
-    add_ent(area,	7,	29,		s_shelf_top)
-    add_ent(area,	12,	30,		s_shelf_top)
+    aent(area,	6,	30,		s_shelf_top)
+    aent(area,	7,	29,		s_shelf_top)
+    aent(area,	12,	30,		s_shelf_top)
 	
-    add_ent(area,	11, 31,		s_table)
-    add_ent(area,	2, 	29, 	s_clock )
+    aent(area,	11, 31,		s_table)
+    aent(area,	2, 	29, 	s_clock )
 	
 	return area
 end
@@ -1181,9 +1178,9 @@ end
 function add_area_f1_corridor()
 	local area = add_map_area(       0,40,46,42,     0,37,46,43)
 	
-	add_ent(area,	4,	38,		s_photo2)
-	add_ent(area,	23,	38,		s_photo2)
-	add_ent(area,	36,	38,		s_photo1)
+	aent(area,	4,	38,		s_photo2)
+	aent(area,	23,	38,		s_photo2)
+	aent(area,	36,	38,		s_photo1)
 	
 	
 	return area
@@ -1192,15 +1189,15 @@ end
 function add_area_f1_bathroom()
 	local area = add_map_area(       6,43,16,51,     6,44,16,51)
 	
-	add_ent(area,	8,	50,		s_toilet_back)	
+	aent(area,	8,	50,		s_toilet_back)	
 	
-	add_ent(area,	13,	50,		s_baththub)
-	add_ent(area,	14,	50,		s_baththub, false, false, true)
-	add_ent(area,	14,	49,		s_shower, true, false, true)
+	aent(area,	13,	50,		s_baththub)
+	aent(area,	14,	50,		s_baththub, false, false, true)
+	aent(area,	14,	49,		s_shower, true, false, true)
 		
-	add_ent(area, 12,	45.25,	{s_mirror, s_shelf_top })
-	add_ent(area, 14,	45.25,	{s_cupboard, s_shelf_top })
-	add_ent(area,	13,	46,			s_sink)
+	aent(area, 12,	45.25,	{s_mirror, s_shelf_top })
+	aent(area, 14,	45.25,	{s_cupboard, s_shelf_top })
+	aent(area,	13,	46,			s_sink)
 	
 	return area
 end
@@ -1210,21 +1207,21 @@ function add_area_f1_library()
 	
 	foreach( {15,16,17,  20,21,22,23,24,  27, 28, 29,  31, 32, 33}, 
 	function(x)
-		add_ent(area,	x,	35,		s_shelf_top, true)
+		aent(area,	x,	35,		s_shelf_top, true)
 	end )
 		
-	add_ent(area,	23,	33,	s_plant)
+	aent(area,	23,	33,	s_plant)
 	
-	add_ent(area,	37,	34,		s_chair, false, false, true)
-	add_ent(area,	37,	33,		s_chair, false, false, true)
+	aent(area,	37,	34,		s_chair, false, false, true)
+	aent(area,	37,	33,		s_chair, false, false, true)
 	
-	add_ent(area,	35,	33,		s_table_back)
-	add_ent(area,	36,	33,		s_table_back)
+	aent(area,	35,	33,		s_table_back)
+	aent(area,	36,	33,		s_table_back)
 	
-	add_ent(area,	35.5,	33.2,	s_plant)
-	add_ent(area,	35,	31,		s_clock)
+	aent(area,	35.5,	33.2,	s_plant)
+	aent(area,	35,	31,		s_clock)
 	
-    f1_library_safe = add_ent(area,	34,	33,		s_safe)
+    f1_library_safe = aent(area,	34,	33,		s_safe)
 	
     function f1_library_safe:on_use(atr)
         if not self.triggered then
@@ -1243,7 +1240,7 @@ end
 function add_area_f1_storage()
 	local area = add_map_area(        39,30,46,39,    39,30,46,36)
 	
-	f1_fuse_cupboard = add_ent(area, 45, 33,		s_cupboard)
+	f1_fuse_cupboard = aent(area, 45, 33,		s_cupboard)
 
     function f1_fuse_cupboard:on_use(atr)
         if not self.triggered then
@@ -1257,7 +1254,7 @@ function add_area_f1_storage()
 	end
 
     f1_generator = add_generator(area, 1,		41, 33)
-    add_ent_blocker(f1_generator, f1_fuse_cupboard)
+    aent_blocker(f1_generator, f1_fuse_cupboard)
 
 	f1_generator.light = true
 	f1_generator.power_level = 1000
@@ -1295,7 +1292,7 @@ end
 function add_area_f2_construction_a()
     local area = add_map_area(14,4,23,12,    	14,4,23,10)
 
-    f2_construction_fuel_cupboard = add_ent(area, 15, 7, s_cupboard)
+    f2_construction_fuel_cupboard = aent(area, 15, 7, s_cupboard)
     
     function f2_construction_fuel_cupboard:on_use(atr)
         if not self.triggered then
@@ -1317,7 +1314,7 @@ function add_area_f2_construction_b()
     local area = add_map_area(24,4,38,10,    	24,4,38,10)
 
     f2_generator = add_generator(area, 2,	 	37, 7)
-    add_ent_blocker(f2_generator, f2_construction_fuel_cupboard)
+    aent_blocker(f2_generator, f2_construction_fuel_cupboard)
 
     function f2_generator:on_use(atr)
 		
@@ -1346,7 +1343,7 @@ end
 function add_area_f0_garage()
 	local area =  add_map_area(72,5,87,14,    	72,5,87,14)
 		
-	f0_axe = add_ent(area, 86, 10,		s_axe)
+	f0_axe = aent(area, 86, 10,		s_axe)
 	f0_axe.type = 1
 
 	function f0_axe:on_use(atr)
@@ -1365,10 +1362,10 @@ end
 function add_area_f0_kitchen()
 	local area =  add_map_area(49,0,62,5,    		49,0,62,5)
 	
-	f0_garage_key = add_ent(area, 60, 4,		s_key)	
+	f0_garage_key = aent(area, 60, 4,		s_key)	
 	f0_garage_key.type = 1
 
-    add_ent_blocker(f0_garage_key, f0_generator)
+    aent_blocker(f0_garage_key, f0_generator)
 
 	function f0_garage_key:on_use(atr)
 		if not self.triggered and fb_generator.triggered then
@@ -1401,7 +1398,7 @@ function add_area_fb_gen_area()
             self.triggered = true
             
             text_add("ok_._._.___ everything should be stable now.___ time to find the source of that glass noise.")
-            f0_office_door.blocker.block_text = "brunos office_._._.___ this is where the sound came from.____ it's locked though_._._._ i think he left the code in the library safe.___ the library is boarded so i'll need to get an axe from the garage."
+            f0od.blocker.block_text = "brunos office_._._.___ this is where the sound came from.____ it's locked though_._._._ i think he left the code in the library safe.___ the library is boarded so i'll need to get an axe from the garage."
 			
 			for gen in all(ggen) do
 				gen.power_leak = false
@@ -1496,11 +1493,11 @@ function add_game_maps()
 	local f0_livingroom_door 	= add_door( f0_corridor, 	55,15, 			s_wall_brown)
 	f0_garage_door 			= add_door( f0_corridor, 	75,15, 			s_wall_brown)
 	local f0_bathroom_door 		= add_door( f0_corridor, 	92,15, 			s_wall_brown)
-	f0_office_door 			= add_door( f0_office,			61,22,			s_wall_gray)	
+	f0od 			= add_door( f0_office,			61,22,			s_wall_gray)	
 	
-    add_ent_blocker(f0_garage_door, f0_garage_key)
-    add_ent_blocker(f0_office_door, f1_library_safe)
-    f0_office_door.blocker.block_text = "brunos office_._._._"
+    aent_blocker(f0_garage_door, f0_garage_key)
+    aent_blocker(f0od, f1_library_safe)
+    f0od.blocker.block_text = "brunos office_._._._"
 
     
 	add_map_link(f0_corridor, f0_entrance)
@@ -1562,7 +1559,7 @@ function can_pl_move()
     elseif cfs == 2 then
         return (not f2lf or f_s[cfs].ft > 90)
     elseif cfs == 6 then
-        return (f_s[cfs].stage_internal != 1 and f_s[cfs].stage_internal != 4)
+        return (f_s[cfs].s_int != 1 and f_s[cfs].s_int != 4)
     end
 
     return true
@@ -1571,7 +1568,7 @@ end
 function flow_init_common()
     f_s[cfs].ft = 0
     f_s[cfs].stage += 1
-    f_s[cfs].stage_internal = 0
+    f_s[cfs].s_int = 0
 end
 function flow_update_common()
     if (not g_drawing_text) f_s[cfs].ft += 1
@@ -1676,8 +1673,8 @@ function f2u()
 end
 function flow_2_exit()
 
-    remove_teleporter(25,44)
-    remove_teleporter(30,44)
+    rm_t(25,44)
+    rm_t(30,44)
 
 end
 
@@ -1711,7 +1708,7 @@ function f3u()
 
 end
 function flow_3_exit()
-    remove_teleporter(25,44)
+    rm_t(25,44)
 end
 
 function f4i()
@@ -1726,7 +1723,7 @@ function f4u()
     end
 end
 function flow_4_exit()
-    remove_teleporter(25,44)
+    rm_t(25,44)
 end
 
 function f5i()
@@ -1746,10 +1743,15 @@ end
 function f6i()
 end
 function f6u()
-    if get_pl_floor() == 0 and f_s[cfs].stage_internal == 0 then
-        local distancetoboss = dist(pl.x,pl.y,f0_office_door.x, f0_office_door.y+8)
-        if distancetoboss > 0 and distancetoboss < 8 then
-            f_s[cfs].stage_internal += 1
+    if get_pl_floor() == 0 and f_s[cfs].s_int == 0 then
+
+        if abs(pl.x - f0od.x) > 32 or abs(pl.y - f0od.y) > 32 then
+            return
+        end
+
+        local dtb = dist(pl.x,pl.y,f0od.x, f0od.y+8)
+        if dtb > 0 and dtb < 8 then
+            f_s[cfs].s_int += 1
             do_lightning_long()
 
             f_s[cfs].ft = 0
@@ -1759,7 +1761,7 @@ function f6u()
             fset(14, 6, true)
             fset(15, 6, true)
         end
-    elseif f_s[cfs].stage_internal == 1 then
+    elseif f_s[cfs].s_int == 1 then
         
         if f_s[cfs].ft == 10 then
             text_add("b-__b-__b-__b_lood on the floor?___._._.____._._.____oh no. i remember now___ ... ___why i left___ ... ___and why i came back.", false, true, true)
@@ -1774,13 +1776,13 @@ function f6u()
             text_add("i left for a while after that__.__.__.______ i came back to put this to rest.", false, true, true)
         
         elseif f_s[cfs].ft >= 50 then
-            f_s[cfs].stage_internal += 1
+            f_s[cfs].s_int += 1
         end
-    elseif f_s[cfs].stage_internal == 3 then
+    elseif f_s[cfs].s_int == 3 then
         f_s[cfs].ft = 0
-        f_s[cfs].stage_internal += 1
+        f_s[cfs].s_int += 1
     
-    elseif f_s[cfs].stage_internal == 4 then
+    elseif f_s[cfs].s_int == 4 then
         if f_s[cfs].ft == 15 then
             text_add("finally__.__.__.__._____ i've laid him to rest.________________", false, true, true)
         end
@@ -1802,7 +1804,7 @@ function a_f_s(init,update,exit)
     local f = {}
 
     f.stage = 0
-    f.stage_internal = 0
+    f.s_int = 0
 
     f.func_init = init
     f.func_update = update
@@ -1863,7 +1865,7 @@ function a_t(minx,miny,maxx,maxy, desx, desy, d, block_warp, block_text)
     add(teleporters,t)
 end
 
-function remove_teleporter(minx,miny)
+function rm_t(minx,miny)
     for t in all(teleporters) do
         if t.minx == minx and t.miny == miny then
             del(teleporters, t)
@@ -1873,25 +1875,25 @@ function remove_teleporter(minx,miny)
 end
 
 function warp_player()
-    pl.x = teleporter_using.desx * 8
-    pl.y = teleporter_using.desy * 8
+    pl.x = t_u.desx * 8
+    pl.y = t_u.desy * 8
 
-    camera_x = pl.x - 64
-    camera_y = pl.y - 64
+    camx = pl.x - 64
+    camy = pl.y - 64
 
     pl.frame = 1
-    if(not teleporter_using.face_down) pl.dir = 4
+    if(not t_u.face_down) pl.dir = 4
 
     jtel = true
-    teleporter_using = nil
+    t_u = nil
 end
 
-function process_teleporting()
+function pro_t()
     
-    if (not teleporter_using) return
+    if (not t_u) return
 
-    if teleporter_using.block_warp then
-        text_add(teleporter_using.block_text)
+    if t_u.block_warp then
+        text_add(t_u.block_text)
         warp_player()
         jtel = false
         psgfw = false
@@ -1899,7 +1901,7 @@ function process_teleporting()
         return
     end
 
-    if fade_screen_y >= 127 and not g_player_died then
+    if fscy >= 127 and not gpld then
         for a in all(atrs) do
             a.dx = 0
             a.dy = 0
@@ -1912,68 +1914,68 @@ function process_teleporting()
 end
 
 function draw_teleport_warp()
-    if fade_screen_y <= 127 and fade_screen_y >= 0 then
+    if fscy <= 127 and fscy >= 0 then
         
         if (fsftm < 1) fsftm+=1 return
 
-        local amount_per_frame = 6
+        local apf = 6
         
-        for y=0, fade_screen_y + amount_per_frame do
+        for y=0, fscy + apf do
             
-            for x=fade_screen_x, fade_screen_x + 63 do
-                pset(camera_x+x,camera_y+y-1,0)
+            for x=fscx, fscx + 63 do
+                pset(camx+x,camy+y-1,0)
             end
         end
 
         if (fsftm < 3) fsftm+=1 return
         
-        if(fade_screen_y == 0) sfx(21)
+        if(fscy == 0) sfx(21)
 
-        fade_screen_x += 64
+        fscx += 64
 
-        for y=0, fade_screen_y + amount_per_frame do
+        for y=0, fscy + apf do
             
-            for x=fade_screen_x, fade_screen_x + 63 do
-                pset(camera_x+x,camera_y+y-1,0)
+            for x=fscx, fscx + 63 do
+                pset(camx+x,camy+y-1,0)
             end
         end
 
-        fade_screen_x = 0
+        fscx = 0
         fsftm = 0
 
-        fade_screen_y += amount_per_frame+1
+        fscy += apf+1
     end
 end
 
-function is_cell_solid(x,y)
+function i_c_s(x,y)
     return fget(mget(x,y), 6)
 end
 
 function is_map_solid(x,y,dx,dy)
-    local mod_x = x % 1
-    local mod_y = y % 1
+    local mx = x % 1
+    local my = y % 1
 
-    local cell_x = x - mod_x
-    local cell_y = y - mod_y
+    local cell_x = x - mx
+    local cell_y = y - my
     
-    if dx != 0 and mod_x <= 0.15 then
+    if dx != 0 and mx <= 0.15 then
         cell_x += dx
     end
 
-    if dy == -1 and mod_y <= 0.5 then
+    if dy == -1 and my <= 0.5 then
         cell_y += dy
-    elseif dy == 1 and mod_y >= 0.75 then
+    elseif dy == 1 and my >= 0.75 then
         cell_y += dy
     end
 
     if dx != 0 or dy != 0 then
         for m in all(areas) do
             if m.show or m.linkshow then 
-                for e in all(m.entities) do
+                for e in all(m.ents) do
                     if e.coll and not e.triggered then
                         if e.x / 8 == cell_x and e.y / 8 == cell_y then
                             return true
-                        elseif mod_x >= 0.15 and e.x / 8 == cell_x+1 and e.y / 8 == cell_y then
+                        elseif mx >= 0.15 and e.x / 8 == cell_x+1 and e.y / 8 == cell_y then
                             return true
                         end
                     end
@@ -1981,11 +1983,11 @@ function is_map_solid(x,y,dx,dy)
             end
         end
 
-        if is_cell_solid(cell_x, cell_y) then
+        if i_c_s(cell_x, cell_y) then
             return true
             
-        elseif mod_x >= 0.15 then
-            return is_cell_solid(cell_x+1, cell_y)
+        elseif mx >= 0.15 then
+            return i_c_s(cell_x+1, cell_y)
         end
     end
 end
@@ -1997,95 +1999,95 @@ function dist(ax, ay, bx, by)
     return sqrt((x_diff * x_diff) + (y_diff * y_diff))
 end
 
-text_displayline = 1
-text_displaychar = 1
-text_actualchar = 1
-text_displaytimer = 0
+txtdl = 1
+txtdc = 1
+txtac = 1
+txtdt = 0
 
 function text_update()
 
-    if (#text_queue == 0) return
+    if (#t_qq == 0) return
 
-    if text_displaychar > #text_queue[1][text_displayline] then
+    if txtdc > #t_qq[1][txtdl] then
 
-        if text_displayline >= #text_queue[1] then
+        if txtdl >= #t_qq[1] then
             
             twoi = (not btn(4))
 
-            if g_text_wait_at_end and twoi then
+            if twae and twoi then
                 return
             end
 
-            if not g_text_wait_at_end then
-                if not g_text_end_delay_started then
-                    text_displaytimer = 0
-                    g_text_end_delay_started = true
+            if not twae then
+                if not gteds then
+                    txtdt = 0
+                    gteds = true
                 end
 
-                local delay_amount = 15 + g_text_length * 2
+                local dm = 15 + g_text_length * 2
 
-                if (text_displaytimer < delay_amount) then
-                    text_displaytimer+=1 
+                if (txtdt < dm) then
+                    txtdt+=1 
 
-                    if text_displaytimer < (delay_amount) / 2 or not twoi then
+                    if txtdt < (dm) / 2 or not twoi then
                         return
                     end
                 end
             end
 
-            text_displaying = {}
-            text_queue = {}
+            t_dis = {}
+            t_qq = {}
 
-            text_displayline = 1
-            text_displaychar = 1
-            text_actualchar = 1
-            text_displaytimer = 0
+            txtdl = 1
+            txtdc = 1
+            txtac = 1
+            txtdt = 0
 
-            g_text_end_delay_started = false
+            gteds = false
             g_drawing_text = false
             g_text_is_diary = false
 
             return
         else
-            text_displayline += 1
-            text_displaychar = 1
-            text_actualchar = 1
-            text_displaytimer = 0
+            txtdl += 1
+            txtdc = 1
+            txtac = 1
+            txtdt = 0
         end
     end
 
     if g_text_is_diary then
-        for l=1, #text_queue[1] do
-            for l=1, #text_queue[1][l] do
-                text_displaying[l] = text_queue[1][l]
+        for l=1, #t_qq[1] do
+            for l=1, #t_qq[1][l] do
+                t_dis[l] = t_qq[1][l]
             end
         end
 
-        text_displayline = #text_queue[1]
-        text_displaychar = #text_queue[1][text_displayline]+1
-        text_actualchar = #text_displaying[text_displayline]
+        txtdl = #t_qq[1]
+        txtdc = #t_qq[1][txtdl]+1
+        txtac = #t_dis[txtdl]
         return
     end
 
-    if (text_displaytimer < 1) text_displaytimer += 1 return
-    text_displaytimer = 1
+    if (txtdt < 1) txtdt += 1 return
+    txtdt = 1
 
-    if sub(text_queue[1][text_displayline], text_displaychar, text_displaychar) == "_" then
-        text_displaytimer = -4
-        text_displaychar += 1
+    if sub(t_qq[1][txtdl], txtdc, txtdc) == "_" then
+        txtdt = -4
+        txtdc += 1
         return
     end
 
-    text_displaying[text_displayline] = text_displaying[text_displayline] ..sub(text_queue[1][text_displayline], text_displaychar, text_displaychar)
+    t_dis[txtdl] = t_dis[txtdl] ..sub(t_qq[1][txtdl], txtdc, txtdc)
 
-    text_displaychar += 1
-    text_actualchar += 1
+    txtdc += 1
+    txtac += 1
 
-    if (not g_text_no_sound and #gltg == 0) sfx(2, 0)
+    if (not gtns and #gltg == 0) sfx(2, 0)
     
 end
 
-function text_add(str, diary, dont_wait_at_end, add_flow_frame, mute_sound)
+function text_add(str, diary, dwat, f, ms)
 
     local textlines = {}
 
@@ -2095,12 +2097,12 @@ function text_add(str, diary, dont_wait_at_end, add_flow_frame, mute_sound)
 
     g_text_length = 0
 
-    local line_limit = 26
-    if (d) line_limit = 24
+    local ll = 26
+    if (d) ll = 24
 
     local addtoline = function()
         
-        if #word + #line > line_limit then
+        if #word + #line > ll then
             add(textlines, line)
             line = ""
         end
@@ -2125,20 +2127,20 @@ function text_add(str, diary, dont_wait_at_end, add_flow_frame, mute_sound)
 
     if (line != "") add(textlines, line)
 
-    add(text_queue, textlines)
+    add(t_qq, textlines)
 
     for i=1, #textlines do
-        add(text_displaying,"")
+        add(t_dis,"")
     end
 
-    g_text_wait_at_end = not dont_wait_at_end
+    twae = not dwat
     g_drawing_text = true
     g_text_is_diary = diary
-    g_text_no_sound = mute_sound
+    gtns = ms
 
-    text_displaytimer = 0
+    txtdt = 0
 
-    if (add_flow_frame) f_s[cfs].ft += 1
+    if (f) f_s[cfs].ft += 1
 
     pl.dx = 0
     pl.dy = 0
@@ -2147,58 +2149,58 @@ end
 
 function text_draw()
 
-    if (#text_queue == 0) return
+    if (#t_qq == 0) return
 
-    text_start_x = camera_x
-    text_start_y = camera_y
-    box_start_x = camera_x
-    box_start_y = camera_y
-    box_end_x = camera_x
-    box_end_y = camera_y
+    txtsx = camx
+    txtsy = camy
+    bxsx = camx
+    bxsy = camy
+    bxex = camx
+    bxey = camy
     box_col = 1
 
     if g_text_is_diary then
-        box_start_x += 15
-        box_start_y += 5
+        bxsx += 15
+        bxsy += 5
 
-        box_end_x += 111
-        box_end_y += 122
+        bxex += 111
+        bxey += 122
 
-        text_start_x += 19
-        text_start_y += 10
+        txtsx += 19
+        txtsy += 10
 
         box_col = 7
     else
-        box_start_x += 5
-        box_start_y += 85
+        bxsx += 5
+        bxsy += 85
 
-        box_end_x += 122
-        box_end_y += 122
+        bxex += 122
+        bxey += 122
 
-        text_start_x += 10
-        text_start_y += 110
+        txtsx += 10
+        txtsy += 110
     end
 
-    rectfill(box_start_x, box_start_y, box_end_x, box_end_y, box_col)
+    rectfill(bxsx, bxsy, bxex, bxey, box_col)
 
-    rect(box_start_x - 1,   box_start_y - 1,    box_end_x + 1,  box_end_y + 1,  0)
-    rect(box_start_x,       box_start_y,        box_end_x,      box_end_y,      2)
-    rect(box_start_x + 1,   box_start_y + 1,    box_end_x - 1,  box_end_y - 1,  6)
+    rect(bxsx - 1,   bxsy - 1,    bxex + 1,  bxey + 1,  0)
+    rect(bxsx,       bxsy,        bxex,      bxey,      2)
+    rect(bxsx + 1,   bxsy + 1,    bxex - 1,  bxey - 1,  6)
 
     if (not g_text_is_diary) clip(10, 90, 117, 27)
 
-    for i=1, #text_displaying[1] do
-        if i < text_displayline then
+    for i=1, #t_dis[1] do
+        if i < txtdl then
             if not g_text_is_diary then
-                print(text_displaying[i], text_start_x, text_start_y - (8 * (text_displayline-i)), 7)
+                print(t_dis[i], txtsx, txtsy - (8 * (txtdl-i)), 7)
             else
-                print(text_displaying[i], text_start_x, text_start_y + (8 * (i-1)), 0)
+                print(t_dis[i], txtsx, txtsy + (8 * (i-1)), 0)
             end
-        elseif i == text_displayline then
+        elseif i == txtdl then
             if not g_text_is_diary then
-                print(sub(text_displaying[i], 1, text_actualchar), text_start_x, text_start_y, 7)
+                print(sub(t_dis[i], 1, txtac), txtsx, txtsy, 7)
             else
-                print(sub(text_displaying[i], 1, text_actualchar), text_start_x, text_start_y + (8 * (i-1)), 0)
+                print(sub(t_dis[i], 1, txtac), txtsx, txtsy + (8 * (i-1)), 0)
             end
         end
 
@@ -2206,14 +2208,14 @@ function text_draw()
 
     clip()
 
-    if twoi and g_text_wait_at_end then
-        text_displaytimer += 1
+    if twoi and twae then
+        txtdt += 1
 
-        if(text_displaytimer >= 0 and text_displaytimer < 30) pal(6, 5)
-        spr(123, box_end_x - 12, box_end_y - 10)
+        if(txtdt >= 0 and txtdt < 30) pal(6, 5)
+        spr(123, bxex - 12, bxey - 10)
         pal()
 
-        if (text_displaytimer > 60) text_displaytimer = 0
+        if (txtdt > 60) txtdt = 0
     end
 
 end
