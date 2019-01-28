@@ -4,63 +4,47 @@ __lua__
 -- of ineffable nature
 -- team spook
 
-flag_collision = 6
-flag_anim_end = 0
-flag_sprite_map_bottom_layer = 6
-flag_sprite_map_top_layer = 7
-
--- base speed for actors to move at
-g_speed_accel = 1
-
-g_generators = {}
-
--- how many frames between updating character frames
-g_anim_update_interval = 5
-
--- global frame count 
-g_frame = 0
+ggen = {}
 
 g_player_died = false
 g_died_init = false
 
 g_drawing_text = false
-g_text_waiting_on_input = false
+twoi = false
 g_text_is_diary = false
 
-g_draw_before_player = false
+dbfp = false
 
-g_music_playing = true
+mspl = true
 
 camera_x = 0
 camera_y = 0
 
--- the global pools
-actors = {}
+atrs = {}
 areas = {}
 text_queue = {}
 text_displaying = {}
 
-just_teleported = false
-pause_game_for_warp = false
+jtel = false
+psgfw = false
 fade_screen_x = 0
 fade_screen_y = 0
-fade_screen_frame_time = 0
+fsftm = 0
 
-g_player_collected_axe = false
+haxe = false
 
 lightning_chance = 10
 lightning_chance_timer = 0
 
--- main entry points
 function _init()
 
-    pl = add_actor(24,256,0) --pixels
+    pl = add_atr(24,256,0)
     pl.isplayer = true
     
-    set_light_level(g_light_default)
+    sll(g_light_default)
 
     add_game_maps()
-    init_channel_two_sfx()
+    icts()
 
     init_flow()
 
@@ -73,15 +57,15 @@ function _update()
     if pl.health <= 0 then
         g_player_died = true
     else
-        if g_music_playing then 
+        if mspl then 
             if current_sfx == sfx_enemy_close or current_sfx == sfx_enemy_very_close then
                 music(-1, 500, 8)
-                g_music_playing = false
+                mspl = false
             end
         else
             if current_sfx != sfx_enemy_close and current_sfx != sfx_enemy_very_close then
                 music(0, 500, 8)
-                g_music_playing = true
+                mspl = true
             end
         end
     end
@@ -90,7 +74,6 @@ function _update()
         if not g_died_init then
             g_died_init = true
             
-            -- stop the rain, start the dead sound
             sfx(-1, 2)
             stop_sfx()
             music(-1, 300)
@@ -99,7 +82,7 @@ function _update()
 
             wait(15)
 
-            pause_game_for_warp = true
+            psgfw = true
             fade_screen_x = 0
             fade_screen_y = 0
 
@@ -107,17 +90,15 @@ function _update()
 
         if fade_screen_y >= 127 then
             wait(15)
-
-            -- on a death reset, skip the intro next time
             printh('nointro', '@clip')
 
             run()
         end
     end
 
-    if not pause_game_for_warp then
+    if not psgfw then
         if not g_drawing_text then 
-            foreach(actors, update_actor)
+            foreach(atrs, update_atr)
         else
             text_update()
         end
@@ -125,7 +106,6 @@ function _update()
         local cx = flr((pl.x / 8))
         local cy = flr((pl.y / 8) + 0.75)
 
-        -- loop through areas and show them if need be
         for m in all(areas) do
 			foreach(m.entities, update_ent)
 			
@@ -139,9 +119,8 @@ function _update()
         for t in all(teleporters) do
             if cx >= t.minx and cx <= t.maxx and cy >= t.miny and cy <= t.maxy then
                 
-                -- we want a nice 'fade out' to happen, so pause everything to do this before warping
-                if not pause_game_for_warp then
-                    pause_game_for_warp = true
+                if not psgfw then
+                    psgfw = true
                     fade_screen_x = 0
                     fade_screen_y = 0
 
@@ -155,15 +134,13 @@ function _update()
     end
 		
 	local floor = get_pl_floor()
-	g_light_level = g_generators[floor]:get_lightlevel()
+	g_light_level = ggen[floor]:get_lightlevel()
 
-    g_frame += 1
 end
 
 function _draw()
 
-    --clear the screen first
-    if not pause_game_for_warp or just_teleported then
+    if not psgfw or jtel then
         cls()
         
         camera(camera_x, camera_y)
@@ -173,10 +150,10 @@ function _draw()
             return
         end
 
-        if not g_player_died and not g_drawing_text and flow_2_lightning_finished then
+        if not g_player_died and not g_drawing_text and f2lf then
             lightning_chance_timer += 1
         
-            if (current_flow_state == 6) lightning_chance_timer += 4
+            if (cfs == 6) lightning_chance_timer += 4
 
 
             if lightning_chance_timer > 120 then
@@ -191,12 +168,11 @@ function _draw()
             end
         end
 
-        g_draw_before_player = true
+        dbfp = true
 
         local visible_areas = {}
         local drawn_areas = {}
 
-        -- loop through areas, if they can show, draw the map
         for m in all(areas) do
             m.linkshow = false
             if m.show then 
@@ -223,19 +199,17 @@ function _draw()
             end
         end
 
-        for a in all(actors) do
-            draw_actor(a, drawn_areas, false)
+        for a in all(atrs) do
+            draw_atr(a, drawn_areas, false)
         end
 
-        draw_actor(pl, drawn_areas, true)
-        g_draw_before_player = false
+        draw_atr(pl, drawn_areas, true)
+        dbfp = false
 
-        for a in all(actors) do
-            draw_actor(a, drawn_areas, false)
+        for a in all(atrs) do
+            draw_atr(a, drawn_areas, false)
         end
 
-        -- draw this a second time, but because we're drawing after the player now, only entities 
-        --  on a lower y axis to the player will be drawing
         for m in all(visible_areas) do
             draw_map_area(m)
             
@@ -287,7 +261,7 @@ light_lv_pals	=
 
 g_light_default = 8
 g_light_level = 8
-g_lightnings = {}
+gltg = {}
 
 function set_pal(p)
 	for i =0,15 do
@@ -296,7 +270,7 @@ function set_pal(p)
 	end
 end
 
-function set_light_level(lv)
+function sll(lv)
 	g_light_level = lv or g_light_default	
 end
 
@@ -309,7 +283,7 @@ function add_lightning(duration, intensity)
 	lightning.time = duration
 	lightning.timer = duration	
 	
-	add(g_lightnings, lightning)
+	add(gltg, lightning)
 	
 	return lightning
 end
@@ -334,10 +308,6 @@ function do_lightning_long()
     add_lightning(7, 6)
     add_lightning(4, 17)
     add_lightning(6, 6)
-    add_lightning(8, 15)
-    add_lightning(4, 9)
-    add_lightning(5, 13)
-    add_lightning(7, 6)
     
     play_lightning_sfx()
 end
@@ -350,16 +320,16 @@ end
 
 function draw_lightnings()
     local intensity = 0
-    for lightning in all(g_lightnings) do			
+    for lightning in all(gltg) do			
         lightning.timer -= 1
         
-        if (lightning.timer < 0) del(g_lightnings, lightning)
+        if (lightning.timer < 0) del(gltg, lightning)
         
         intensity += lightning.intensity * lightning.timer / lightning.time
     end
     
     if( intensity > 16) intensity = 16		
-    if( intensity <= 0 ) g_lightnings = {}		
+    if( intensity <= 0 ) gltg = {}		
             
     if( intensity > g_light_level ) set_pal( light_lv_pals[intensity] );
 end
@@ -380,8 +350,7 @@ end
 
 function redify_screen()
 	local red_cols			= { 0, 2, 8, 14, 4,		0,0,2,2,8,8,8,8,1 }
-	-- red_pal			= { 2, 8, 0, 14, 	8, 4, 14, 8, 		14,  2, 2, 0,  	8, 2, 8, 0}
-	
+
 	local palette = create_temp_pal(5)		
 	for i =1,16 do
 		palette[i] = red_cols[ flr(rnd(#red_cols))+1]
@@ -396,7 +365,7 @@ current_sfx = -1
 function add_sfx_to_pool(snd, p)
     local s = {}
     s.snd = snd
-    s.priority = p
+    s.pri = p
     s.channel = 1
     add(sfx_pool, s)
 
@@ -406,7 +375,7 @@ end
 function play_sfx(idx, ent)
     if (current_sfx != -1 and sfx_pool[current_sfx].ent and sfx_pool[current_sfx].ent != ent) return
 
-    if current_sfx == -1 or (sfx_pool[idx].priority >= sfx_pool[current_sfx].priority and sfx_pool[idx].snd != sfx_pool[current_sfx].snd) then
+    if current_sfx == -1 or (sfx_pool[idx].pri >= sfx_pool[current_sfx].pri and sfx_pool[idx].snd != sfx_pool[current_sfx].snd) then
         sfx(-1,1)
         sfx(sfx_pool[idx].snd, 1)
 
@@ -424,47 +393,31 @@ function stop_sfx(idx, ent)
     sfx(-1,1)
 end
 
--- sounds that can use channel 2 for looping sounds
-function init_channel_two_sfx()
-
-    -- critical one shot sounds
-    
-
-    -- looping sounds
-    
+function icts()
     sfx_enemy_very_close = add_sfx_to_pool(16, 0)
     sfx_enemy_close = add_sfx_to_pool(17, 0)
-
-    sfx_generator_hum = add_sfx_to_pool(19, 4)
-    sfx_tick_tock = add_sfx_to_pool(9, 5)
-
 end
 
-
--- ########################################################################
---                          player functions     start
--- ########################################################################
-
-function actor_facing_entity(actor, e)
+function atr_facing_entity(atr, e)
 	local action_dist = 16	
-	if( abs(actor.x - e.x) + abs(actor.x - e.x) > action_dist ) return false
-	if( actor.x < e.x and actor.dir == 3) return false
-	if( actor.x > e.x and actor.dir == 1) return false
-	if( actor.y < e.y and actor.dir == 4) return false
-	if( actor.y > e.y and actor.dir == 2) return false
+	if( abs(atr.x - e.x) + abs(atr.x - e.x) > action_dist ) return false
+	if( atr.x < e.x and atr.dir == 3) return false
+	if( atr.x > e.x and atr.dir == 1) return false
+	if( atr.y < e.y and atr.dir == 4) return false
+	if( atr.y > e.y and atr.dir == 2) return false
 	return true
 end
 
-function actor_action(actor, attack)
+function atr_action(atr, attack)
 	for m in all(areas) do
 		if m.show or m.linkshow then
 			for e in all(m.entities) do
-				if actor_facing_entity(actor, e) then
+				if atr_facing_entity(atr, e) then
 					local result = false
 					if attack and e.on_attack then
 						result = e.on_attack(e)
 					elseif e.on_use then
-						result = e.on_use(e, actor)
+						result = e.on_use(e, atr)
 					end
 					if(result) return result;
 				end
@@ -472,8 +425,8 @@ function actor_action(actor, attack)
 		end
 	end
 
-	for e in all(actors) do
-        if actor_facing_entity(actor, e) then
+	for e in all(atrs) do
+        if atr_facing_entity(atr, e) then
             local result = false
             if attack and e.on_attack then						
                 result = e.on_attack(e)
@@ -487,32 +440,28 @@ function pl_move()
     local x = 0
     local y = 0
 
-    -- left
     if (btn(0)) x = -1
 
-    -- right
     if (btn(1)) x = 1
 
-    -- up
     if (btn(2)) y = -1
 
-    -- down
     if (btn(3)) y = 1
 
 	pl.attack = btnp(4)
     pl.use = btnp(5)
 
-    if not just_teleported and can_pl_move() then
-        add_force_to_actor(pl,x,y)
+    if not jtel and can_pl_move() then
+        aftat(pl,x,y)
     else
-        if (y == 0) just_teleported = false
+        if (y == 0) jtel = false
     end
 
     camera_x = pl.x - 64
     camera_y = pl.y - 64
 
     if not g_drawing_text then
-	    if (pl.use or pl.attack) actor_action(pl, pl.attack)
+	    if (pl.use or pl.attack) atr_action(pl, pl.attack)
     end
 end
 
@@ -532,11 +481,10 @@ function get_pl_floor()
 	return 0
 end
 
-function setup_pl_anims(a)
-    -- right, down, left, and up consist of 4 frames
+function splan(a)
+    
     a.anim_sz = { 4, 4, 4, 4 }
 
-    -- the actor transparent colour
     a.tcol = 0
 
     for i=1, 8 do
@@ -546,43 +494,36 @@ function setup_pl_anims(a)
         end
     end
 
-    -- upper frames - since they're all the same right now
     for i=1,4 do
-        a.anim[1][i] = 39   --right
-        a.anim[3][i] = 7    	--down
-        a.anim[5][i] = -39   --left
-        a.anim[7][i] = 9   	--up
+        a.anim[1][i] = 39   
+        a.anim[3][i] = 7    	
+        a.anim[5][i] = -39   
+        a.anim[7][i] = 9   	
     end
 
-    -- right and left lower frames
     a.anim[2][1] = 55
     a.anim[2][2] = 56
     a.anim[2][3] = 55
     a.anim[2][4] = 57
     
-    -- left is the same as right
     for i=1,4 do
         a.anim[6][i] = -a.anim[2][i]
     end
 
-    -- down lower frames
     a.anim[4][1] = 23
     a.anim[4][2] = 24
     a.anim[4][3] = 23
     a.anim[4][4] = -24
 
-    -- up lower frames
     a.anim[8][1] = 25
     a.anim[8][2] = 26
     a.anim[8][3] = 25
     a.anim[8][4] = -26
 end
 
-function setup_mon_anims(a)
-    -- right, down, left, and up consist of 4 frames
+function smoan(a)
     a.anim_sz = { 4, 4, 4, 4 }
 	
-	-- the actor transparent colour
     a.tcol = 14
 	
     for i=1, 8 do
@@ -592,47 +533,37 @@ function setup_mon_anims(a)
         end
     end
     
-    -- upper frames - since they're all the same right now
     for i=1,4 do
-        a.anim[1][i] = 33   --right
-        a.anim[3][i] = 1   	--down
-        a.anim[5][i] = 36   --left
-        a.anim[7][i] = 4   	--up
+        a.anim[1][i] = 33   
+        a.anim[3][i] = 1   	
+        a.anim[5][i] = 36   
+        a.anim[7][i] = 4   	
     end
 
-    -- right lower frames
     a.anim[2][1] = 49
     a.anim[2][2] = 50
     a.anim[2][3] = 49
     a.anim[2][4] = 51
     
-     -- left lower frames
     a.anim[6][1] = 52
     a.anim[6][2] = 53
     a.anim[6][3] = 52
     a.anim[6][4] = 54
 
-    -- down lower frames
     a.anim[4][1] = 17
     a.anim[4][2] = 18
     a.anim[4][3] = 17
     a.anim[4][4] = 19
 
-    -- up lower frames
     a.anim[8][1] = 20
     a.anim[8][2] = 21
     a.anim[8][3] = 20
     a.anim[8][4] = 22
 end
 
--- add an actor to the pool: 
--- x pos
--- y pos
--- actor type: 0 = player
-function add_actor(x,y,at, is_boss)
+function add_atr(x,y,at, is_boss)
     local a = {}
 
-    -- this x and y is world position, in pixels
     a.x = x
     a.y = y
 
@@ -645,53 +576,46 @@ function add_actor(x,y,at, is_boss)
 
     a.attacktimer = 0
 
-    a.insamemapasplayer = false
+    a.smp = false
 
     a.anim = { }
 
-    -- if this is a player, setup the player anims
     if at == 0 then
-        setup_pl_anims(a)
+        splan(a)
     elseif at == 1 then
-        setup_mon_anims(a)
+        smoan(a)
     end
 
-    -- physics delta speed variables.
     a.dx = 0
     a.dy = 0
 
-    -- facing direction. 1 = right, 2 = down, 3 = left, 4 = up
     a.dir = 1
 
-    -- is the actor moving
     a.moving = false
 
-    -- current frame displaying; for upper and lower body
     a.frame = 1
-    -- current animation frame timer
-    a.frametime = 0
+    a.ft = 0
 
     a.isplayer = false
 
-    add(actors, a)
+    add(atrs, a)
 
     return a
 end
 
-function add_monster_actor(x,y, dir, is_boss)
+function admo(x,y, dir, is_boss)
 
-    local mon = add_actor(x,y,1,is_boss)
+    local mon = add_atr(x,y,1,is_boss)
 
 
     if (dir) mon.dir = dir
     if (is_boss) mon.health = 250
 
-    function mon:on_attack(actor)
+    function mon:on_attack(atr)
         
-        -- play hit sound if no lightning
-        if (#g_lightnings == 0) sfx(-1, 0) sfx(10, 0)
+        if (#gltg == 0) sfx(-1, 0) sfx(10, 0)
         
-        if g_player_collected_axe then
+        if haxe then
             self.health -= 20
         else
             self.health -= 5
@@ -702,51 +626,40 @@ function add_monster_actor(x,y, dir, is_boss)
 
     return mon
 end
-function add_force_to_actor(a,x,y)
+function aftat(a,x,y)
 
-    -- todo do we want this here? need to degrade it somehow rather than straight 0?
     a.dx = 0
     a.dy = 0
 
-    -- any movement at all? set the actor moving
     a.moving = (x != 0 or y != 0)
 
-    -- if not moving, set frame as 1 then exit out
     if (not a.moving) a.frame = 1 return
 
-    if x > 0 then       a.dir = 1 --going right
-    elseif x < 0 then   a.dir = 3 --going left
-    elseif y > 0 then   a.dir = 2 --going down
-    else                a.dir = 4 --going up
+    if x > 0 then       a.dir = 1 
+    elseif x < 0 then   a.dir = 3 
+    elseif y > 0 then   a.dir = 2 
+    else                a.dir = 4 
     end
 
+    local spd = 1
 
-    -- movement physics below
+    if (not a.isplayer) spd *= 0.3
 
-    local speed = g_speed_accel
-
-    if (not a.isplayer) speed *= 0.3
-
-    -- apply global acceleration depending on desired x/y
-    a.dx += speed * x
-    a.dy += speed * y
+    a.dx += spd * x
+    a.dy += spd * y
 
 
-    -- animation selection below
-
-    a.frametime+=1
+    a.ft+=1
     
-    -- exit out if we haven't reached the frame update time
-    if (a.frametime % g_anim_update_interval != 0)  return
+    if (a.ft % 5 != 0)  return
 
-    -- if we've reached the end, reloop
     if a.frame == a.anim_sz[a.dir] then
         a.frame = 1
     else
         a.frame += 1
     end
 
-    a.frametime = 0
+    a.ft = 0
 
 end
 
@@ -754,19 +667,19 @@ function math_lerp(a,b,t)
     return a + t * (b - a)
 end
 
-function process_actor_ai(a)
+function process_atr_ai(a)
     
     local distance = dist(a.x, a.y, pl.x, pl.y)
     
     if a.is_boss then
-        a.insamemapasplayer = true
+        a.smp = true
     end
 
-    if current_flow_state == 6 and flow_states[current_flow_state].stage_internal != 2 then
+    if cfs == 6 and f_s[cfs].stage_internal != 2 then
         return
     end
 
-    if not a.insamemapasplayer then
+    if not a.smp then
         if abs(a.x - pl.x) > 32 or abs(a.y - pl.y) > 32 then
             a.dx = 0
             a.dy = 0
@@ -776,14 +689,11 @@ function process_actor_ai(a)
         end
     end
 
-    -- very simple follow because ghost - maybe change the dist to a los check
-    if not a.attack and (a.insamemapasplayer or (distance >= 0 and distance < 32)) then
+    if not a.attack and (a.smp or (distance >= 0 and distance < 32)) then
 
         local x = 0
         local y = 0
 
-        -- send in the direction to move to get to the player. gate behind
-        --  abs 0.2 check to fix flickering when on the same axis
         if abs(pl.x - a.x) > 0.2 then
             if  pl.x - a.x > 0 then
                 x = 1
@@ -800,15 +710,15 @@ function process_actor_ai(a)
             end
         end
 
-        add_force_to_actor(a, x, y)
+        aftat(a, x, y)
     else
         a.dx = 0
         a.dy = 0
     end
     
-    if a.insamemapasplayer and distance < 72 and distance >= 24 then
+    if a.smp and distance < 72 and distance >= 24 then
         play_sfx(sfx_enemy_close, a)
-    elseif a.insamemapasplayer and distance < 24 then
+    elseif a.smp and distance < 24 then
         play_sfx(sfx_enemy_very_close, a)
     else
         stop_sfx(sfx_enemy_very_close, a)
@@ -840,7 +750,7 @@ function process_actor_ai(a)
     end
 end
 
-function update_actor(a)
+function update_atr(a)
 
     if a.isplayer then 
         pl_move(a)
@@ -851,21 +761,20 @@ function update_actor(a)
             sfx(11, 0)
 
             if a.is_boss then
-                -- end game baby
-                flow_states[current_flow_state].stage_internal = 3
+            
+                f_s[cfs].stage_internal = 3
             end
 
             stop_sfx(sfx_enemy_very_close, a)
             stop_sfx(sfx_enemy_close, a)
 
-            del(actors, a)
+            del(atrs, a)
             return
         end
 
-        process_actor_ai(a)
+        process_atr_ai(a)
     end
-
-    -- convert to world from cell, divide by 8 (due to 1 map cell being 8x8)
+    
     local cx = (a.x / 8)
     local cy = (a.y / 8) + 0.75
 
@@ -876,16 +785,12 @@ function update_actor(a)
 
 end
 
-function draw_actor(a, drawn_areas, drawplayer)
+function draw_atr(a, drawn_areas, drawplayer)
 
     if not a.isplayer then
-
-        -- wait until after the player has drawn if this entity would be on top
-        --  or always drawing on top, don't draw before
-        if g_draw_before_player then
+        if dbfp then
             if(a.y > pl.y) return
         else
-            -- then if we drew on bottom don't draw on top
             if(a.y <= pl.y) return
         end
         
@@ -894,18 +799,16 @@ function draw_actor(a, drawn_areas, drawplayer)
 
         local invisiblemap = false
 
-        a.insamemapasplayer = false
+        a.smp = false
 
         for m in all(drawn_areas) do
             if cx >= m.minx and cx <= m.maxx and cy >= m.miny and cy <= m.maxy then
                 invisiblemap = true
-
-                -- hacky and lazy way but easy
                 local pcx = flr((pl.x / 8))
                 local pcy = flr((pl.y / 8) + 0.75)
 
                 if pcx >= m.minx and pcx <= m.maxx and pcy >= m.miny and pcy <= m.maxy then
-                    a.insamemapasplayer = true
+                    a.smp = true
                 end
             end
         end
@@ -918,7 +821,6 @@ function draw_actor(a, drawn_areas, drawplayer)
 
     local dir = a.dir*2
 
-    -- if we have a custom bg colour, stop it drawing
     if (a.tcol != 0) palt(a.tcol, true)
 
     local top_offset = 8
@@ -929,19 +831,16 @@ function draw_actor(a, drawn_areas, drawplayer)
         top_offset *= height
     end
     
-    -- upper
     local frame = a.anim[dir-1][a.frame]
 	local flip = false
 	if (frame < 0) frame = -frame   flip = true
     spr(frame,     a.x,    a.y - top_offset,    1.0,    height, flip)
     
-    -- lower
 	frame = a.anim[dir][a.frame]
 	flip = false
 	if (frame < 0) frame = -frame    flip = true
     spr(frame,       a.x,    a.y,        1.0,    height, flip)
 
-    -- then reenable it to draw
     if (a.tcol != 0) palt(a.tcol, false)
 
 end
@@ -962,8 +861,6 @@ function add_ent_for_draw_order(e, y)
     e.ovr_y_draw_order = y
 end
 
--- xy is in cell coords. su and sl are upper and lower sprites, su is optional
---  m = the map to tie this to. 
 function add_ent(m, x,y,sp,ontop,drawblack,fliph,flipv)
     local e = {}
 
@@ -971,11 +868,9 @@ function add_ent(m, x,y,sp,ontop,drawblack,fliph,flipv)
     e.y = y * 8
     e.spr = sp
 
-    -- 0 = none, 1 = collectable, 2 = openable door
     e.type = 0
 
-	-- enable collision for all entities by default
-    e.coll = not ontop -- fget(sp, flag_collision)
+    e.coll = not ontop
 
     e.triggered = false
     e.ontop = ontop
@@ -992,7 +887,6 @@ end
 
 function draw_ent(e)
 
-    -- once we've "collected" the key, don't want to draw it
     if e.type == 1 then
         if (e.triggered) return
     end
@@ -1003,14 +897,11 @@ function draw_ent(e)
         order_y = e.ovr_y_draw_order
     end
 
-    -- wait until after the player has drawn if this entity would be on top
-    --  or always drawing on top, don't draw before
-    if g_draw_before_player then
+    if dbfp then
         if(order_y > pl.y) return
         if(e.ontop) return
     else
         if not e.ontop then
-            -- then if we drew on bottom don't draw on top
             if(order_y <= pl.y) return
         end
     end
@@ -1020,7 +911,7 @@ function draw_ent(e)
 	if type(e.spr) == "number" then
 		spr(e.spr,e.x,e.y, 1,1, e.fliph, e.flipv)
 	elseif type(e.spr) == "table" then 
-		-- can make this a loop instead
+    
 		spr(e.spr[1],e.x,e.y, 1,1, e.fliph, e.flipv)
 		spr(e.spr[2],e.x,e.y-8, 1,1, e.fliph, e.flipv)
 	elseif type(e.spr) == "function" then
@@ -1093,12 +984,12 @@ function add_door( area, x,y, spwall, boarded)
 		door.blocker.block_text = "bruno boarded this room, he didn't want me going there.______if i had an axe i would be able to get in.";
     end
 	
-	function door:on_use(actor)
+	function door:on_use(atr)
 		if self.triggered then
-            if (#g_lightnings == 0) sfx(14, 0)
+            if (#gltg == 0) sfx(14, 0)
 			self.triggered = false
 		elseif not self.blocker or self.blocker.triggered then
-            if (#g_lightnings == 0) sfx(14, 0)
+            if (#gltg == 0) sfx(14, 0)
             self.triggered = true
 		else 
 			local msg = self.blocker.block_text or 
@@ -1109,10 +1000,10 @@ function add_door( area, x,y, spwall, boarded)
 		return true
 	end
 
-    function door:on_attack(actor)
+    function door:on_attack(atr)
         if self.blocker and not self.blocker.triggered then
-            if g_player_collected_axe then
-                if (#g_lightnings == 0) sfx(10, 0)
+            if haxe then
+                if (#gltg == 0) sfx(10, 0)
                 self.blocker.triggered = true
             end
         end
@@ -1157,7 +1048,7 @@ function add_generator(area, floor,	 x, y)
 	end
 	
 	function generator:switch()
-		if self.triggered and current_flow_state >= 4 then 
+		if self.triggered and cfs >= 4 then 
 			self.power_level = 30 * 30
 			self.light = not self.light
 		end
@@ -1183,13 +1074,13 @@ function add_generator(area, floor,	 x, y)
 		return self.min_light
 	end
 	
-	g_generators[floor] = generator
+	ggen[floor] = generator
 	
 	return generator
 end
 
 function draw_switch(switch)
-	local generator = g_generators[switch.floor]
+	local generator = ggen[switch.floor]
 	local sprite = (switch.on and s_switch_on) or s_switch_off
 	spr(sprite, switch.x, switch.y, 1,1, switch.fliph, switch.flipv)
 end
@@ -1200,8 +1091,8 @@ function add_lswitch(area, floor,	 x, y)
 	
 	lswitch.floor = floor
 	
-	function lswitch:on_use(actor)
-		local generator = g_generators[self.floor]
+	function lswitch:on_use(atr)
+		local generator = ggen[self.floor]
 		
 		self.on = not self.on
 		
@@ -1259,7 +1150,7 @@ function left_area(a)
 end
 
 function draw_map_area(m)
-    if (g_draw_before_player) map(m.cx,m.cy, m.cx*8,m.cy*8, m.cex - m.cx,m.cey - m.cy)
+    if (dbfp) map(m.cx,m.cy, m.cx*8,m.cy*8, m.cex - m.cx,m.cey - m.cy)
     foreach(m.entities, draw_ent)
 end
 
@@ -1335,7 +1226,7 @@ function add_area_f1_library()
 	
     f1_library_safe = add_ent(area,	34,	33,		s_safe)
 	
-    function f1_library_safe:on_use(actor)
+    function f1_library_safe:on_use(atr)
         if not self.triggered then
             sfx(8, 0)
 			self.triggered = true
@@ -1354,7 +1245,7 @@ function add_area_f1_storage()
 	
 	f1_fuse_cupboard = add_ent(area, 45, 33,		s_cupboard)
 
-    function f1_fuse_cupboard:on_use(actor)
+    function f1_fuse_cupboard:on_use(atr)
         if not self.triggered then
             sfx(8, 0)
 			self.triggered = true
@@ -1372,17 +1263,15 @@ function add_area_f1_storage()
 	f1_generator.power_level = 1000
 	f1_generator.power_leak = false
 	
-    function f1_generator:on_use(actor)
+    function f1_generator:on_use(atr)
 		
         if self.blocker then
             if not self.triggered then
                 if self.blocker.triggered then
-                    if (#g_lightnings == 0) sfx(8, 0)
+                    if (#gltg == 0) sfx(8, 0)
                     self.triggered = true
 					self.power_leak = true
-                    
-                    -- adding fuel
-                    if current_flow_state == 4 then
+                    if cfs == 4 then
                         text_for_flow_4_generator_fueled()
                         f1_generator.power_level = 1000
                     else
@@ -1408,9 +1297,9 @@ function add_area_f2_construction_a()
 
     f2_construction_fuel_cupboard = add_ent(area, 15, 7, s_cupboard)
     
-    function f2_construction_fuel_cupboard:on_use(actor)
+    function f2_construction_fuel_cupboard:on_use(atr)
         if not self.triggered then
-            if (#g_lightnings == 0) sfx(8, 0)
+            if (#gltg == 0) sfx(8, 0)
 			self.triggered = true
             
             text_add("not where i expected it to be but okay.___ now lets finally get those lights back on_._._.___ i should power this floor and the lower floor first.")
@@ -1430,12 +1319,12 @@ function add_area_f2_construction_b()
     f2_generator = add_generator(area, 2,	 	37, 7)
     add_ent_blocker(f2_generator, f2_construction_fuel_cupboard)
 
-    function f2_generator:on_use(actor)
+    function f2_generator:on_use(atr)
 		
         if self.blocker then
             if not self.triggered then
                 if self.blocker.triggered then
-                    if (#g_lightnings == 0) sfx(8, 0)
+                    if (#gltg == 0) sfx(8, 0)
                     self.triggered = true
                     f2_generator.power_level = 1000
                     f2_generator.light = true
@@ -1460,12 +1349,12 @@ function add_area_f0_garage()
 	f0_axe = add_ent(area, 86, 10,		s_axe)
 	f0_axe.type = 1
 
-	function f0_axe:on_use(actor)
+	function f0_axe:on_use(atr)
 		if not self.triggered then
-            if (#g_lightnings == 0) sfx(8, 0)
-            g_player_collected_axe = true
+            if (#gltg == 0) sfx(8, 0)
+            haxe = true
             self.triggered = true
-            add_monster_actor(73*8, 10*8, 3)
+            admo(73*8, 10*8, 3)
         end
 		return true
 	end
@@ -1481,9 +1370,9 @@ function add_area_f0_kitchen()
 
     add_ent_blocker(f0_garage_key, f0_generator)
 
-	function f0_garage_key:on_use(actor)
+	function f0_garage_key:on_use(atr)
 		if not self.triggered and fb_generator.triggered then
-            if (#g_lightnings == 0) sfx(8, 0)
+            if (#gltg == 0) sfx(8, 0)
             self.triggered = true
             fb_generator.power_level = 1000
             fb_generator.light = true
@@ -1506,15 +1395,15 @@ function add_area_fb_gen_area()
 	
 	fb_generator = add_generator(area,  0,	 56, 34)
 	
-	function fb_generator:on_use(actor)
+	function fb_generator:on_use(atr)
 		if not self.triggered then
-            if (#g_lightnings == 0) sfx(8, 0)
+            if (#gltg == 0) sfx(8, 0)
             self.triggered = true
             
             text_add("ok_._._.___ everything should be stable now.___ time to find the source of that glass noise.")
             f0_office_door.blocker.block_text = "brunos office_._._.___ this is where the sound came from.____ it's locked though_._._._ i think he left the code in the library safe.___ the library is boarded so i'll need to get an axe from the garage."
 			
-			for gen in all(g_generators) do
+			for gen in all(ggen) do
 				gen.power_leak = false
 				gen.power_level = 10000
 			end
@@ -1527,9 +1416,6 @@ end
 
 function add_game_maps()
 
-    -- first floor placement
-
-    --    rooms                             player xy       cell xy
     local f1_main_bedroom = add_area_f1_main_bedroom()
     local f1_corridor = add_area_f1_corridor()
     local f1_bathroom = add_area_f1_bathroom()
@@ -1538,7 +1424,6 @@ function add_game_maps()
     local f1_spare_bedroom = add_map_area(  38,43,46,50,    38,44,46,50)
     local f1_stairs = add_map_area(         24,43,33,46,    24,44,33,46)	
 	
-	-- doors
 	f1_bedroom_door 	    = add_door( f1_corridor, 9,39, 		s_wall_brown)
     
 	local f1_library_door 		= add_door( f1_corridor, 19,39, 	s_wall_brown, true)
@@ -1556,9 +1441,7 @@ function add_game_maps()
 	
 	add_lswitch( f1_corridor, 1,		5, 39)
 	add_lswitch( f1_corridor, 1,		30, 39)
-		
 	
-	-- second floor
 	local f2_corridor 				= add_map_area(0,11,46,17,    	0,11,46,17)
 	local f2_corridor_anex 	= add_map_area(5,0,8,10,    			5,0,8,10)	
 	local f2_staircase			= add_map_area(24,18,28,20,   	24,18,28,20)
@@ -1572,7 +1455,6 @@ function add_game_maps()
 	local f2_peaceroom		= add_map_area(39,4,46,10,    	39,4,46,10)
 	local f2_office					= add_map_area(38,18,46,24,   	38,18,46,24)	
 	
-	-- doors
 	local f2_construction_door 	= add_door( f2_corridor, 	19,13, 			s_wall_stripe)
 	local f2_peace_door 				= add_door( f2_corridor, 	43,13, 			s_wall_stripe)
 	
@@ -1584,7 +1466,6 @@ function add_game_maps()
 	add_map_link(f2_staircase, f2_corridor)
 	add_map_link(f2_corridor,f2_staircase)
 	
-	-- anex rooms
 	add_map_link(f2_storage, f2_corridor_anex)
 	add_map_link(f2_toilet, f2_corridor_anex)
 	add_map_link(f2_bedroom1, f2_corridor_anex)	
@@ -1603,8 +1484,6 @@ function add_game_maps()
 	add_lswitch( f2_corridor, 2,		38, 13)
 	add_lswitch( f2_corridor, 2,		3, 13)
 	
-	
-	-- ground floor
 	local f0_corridor 				= add_map_area(49,13,95,20,    49,13,95,19)
 	local f0_entrance			= add_map_area(63,6,71,12,    	63,6,71,12)
 	local f0_stairs					= add_map_area(73,20,82,22,    73,20,82,22)
@@ -1614,7 +1493,6 @@ function add_game_maps()
 	local f0_bathroom			= add_map_area(88,5,95,14,    	88,5,95,14)
 	local f0_office					= add_map_area(49,20,65,28,    49,20,65,28)
 	
-	-- doors
 	local f0_livingroom_door 	= add_door( f0_corridor, 	55,15, 			s_wall_brown)
 	f0_garage_door 			= add_door( f0_corridor, 	75,15, 			s_wall_brown)
 	local f0_bathroom_door 		= add_door( f0_corridor, 	92,15, 			s_wall_brown)
@@ -1641,7 +1519,6 @@ function add_game_maps()
 	add_lswitch( f0_corridor, 		0,		89, 15)
 	add_lswitch( f0_garage, 		0,		79, 7)
 	
-	-- basement
 	local fb_corridor 				= add_map_area(49,40,70,43,    49,39,70,43)
 	local fb_entry 					= add_map_area(61,29,70,39,    60,29,70,39)
 	local fb_gen_area 			    = add_area_fb_gen_area()
@@ -1665,18 +1542,14 @@ function text_for_flow_4_generator_fueled()
     end
 end
 
--- used for blocking entry at the start
 flow_blocker_timer = 0
 
-flow_states = {}
-current_flow_state = 1
-
--- 1 = bedroom wakeup (no player control)
--- 2 = go to the storage for a fuse
+f_s = {}
+cfs = 1
 
 function can_flow_render()
-    if current_flow_state == 1 then
-        return (flow_states[current_flow_state].frametime > 270)
+    if cfs == 1 then
+        return (f_s[cfs].ft > 270)
 
     end
 
@@ -1684,98 +1557,86 @@ function can_flow_render()
 end
 
 function can_pl_move()
-    if current_flow_state == 1 then
-        return (flow_states[current_flow_state].frametime > 270)
-    elseif current_flow_state == 2 then
-        return (not flow_2_lightning_flashed or flow_states[current_flow_state].frametime > 90)
-    elseif current_flow_state == 6 then
-        return (flow_states[current_flow_state].stage_internal != 1 and flow_states[current_flow_state].stage_internal != 4)
+    if cfs == 1 then
+        return (f_s[cfs].ft > 270)
+    elseif cfs == 2 then
+        return (not f2lf or f_s[cfs].ft > 90)
+    elseif cfs == 6 then
+        return (f_s[cfs].stage_internal != 1 and f_s[cfs].stage_internal != 4)
     end
 
     return true
 end
 
 function flow_init_common()
-    flow_states[current_flow_state].frametime = 0
-    flow_states[current_flow_state].stage += 1
-    flow_states[current_flow_state].stage_internal = 0
+    f_s[cfs].ft = 0
+    f_s[cfs].stage += 1
+    f_s[cfs].stage_internal = 0
 end
 function flow_update_common()
-    if (not g_drawing_text) flow_states[current_flow_state].frametime += 1
+    if (not g_drawing_text) f_s[cfs].ft += 1
 end
 function flow_exit_common()
-    current_flow_state += 1
+    cfs += 1
 end
 
-flow_2_lightning_flashed = false
-flow_2_lightning_finished = false
+f2lf = false
+f2lf = false
 
-ambience_initialised = false
-music_initialised = false
+bambi = false
+bminit = false
 function flow_init_ambience(playmusic)
-    
-    -- play rain loop, has the 3rd channel
-    if (not ambience_initialised) sfx(0, 2) ambience_initialised = true
-    
-    -- music has the 4th channel
-    if (playmusic and not music_initialised) music(0, 0, 8) music_initialised = true
-
+    if (not bambi) sfx(0, 2) bambi = true
+    if (playmusic and not bminit) music(0, 0, 8) bminit = true
 end
 
-function flow_1_init()
+function f1i()
     flow_init_ambience()
     
 end
-function flow_1_update()
+function f1u()
 
-    if flow_states[current_flow_state].frametime == 90 then
+    if f_s[cfs].ft == 90 then
         sfx(12, 0)
     end
     
-    if flow_states[current_flow_state].frametime == 150 then
+    if f_s[cfs].ft == 150 then
         text_add("._._.", false, true, true)
     end
 
-    if flow_states[current_flow_state].frametime == 180 then
+    if f_s[cfs].ft == 180 then
         text_add("was that glass breaking?_____ ugh _____i don't want to get out of bed_._._._", false, true, true)
     end
 
-    if flow_states[current_flow_state].frametime == 240 then
+    if f_s[cfs].ft == 240 then
         text_add("but_._._.____ i suppose i should go check that out_._._._", false, true, true)
     end
 
-    if flow_states[current_flow_state].frametime > 270 then
-        --reached the end of flow 1
-        flow_states[current_flow_state].stage += 1
+    if f_s[cfs].ft > 270 then
+        f_s[cfs].stage += 1
     end
 end
 function flow_1_exit()
 
 end
 
-function flow_2_init()
-    -- as we can skip the intro on a death, init ambience if done so
+function f2i()
     flow_init_ambience(true)
-
-
-    -- 1st to 2nd floor
-    add_teleporter(30,44, 32,44,  31,42, true, true, "i should find some fuses to start the generator on this level_._._.")
-
-    -- 1st to ground floor
-    add_teleporter(25,44, 27,44,  26,42, true, true, "i should find some fuses to start the generator on this level_._._.")
+    local s = "i should find some fuses to start the generator on this level_._._."
+    a_t(30,44, 32,44,  31,42, true, true, s)
+    a_t(25,44, 27,44,  26,42, true, true, s)
 
 end
-function flow_2_update()
+function f2u()
 
-    -- unlocking the bedroom door when getting near
     if not f1_bedroom_door.triggered then
         if (dist(pl.x,pl.y, 72,281) < 16) f1_bedroom_door.triggered = true
     end
 
-    if not flow_2_lightning_flashed then				
+    if not f2lf then				
         if (dist(pl.x,pl.y, 72,324) < 8) then
-            flow_2_lightning_flashed = true
-            flow_states[current_flow_state].frametime = 0
+            f2lf = true
+            f_s[cfs].ft = 0
             
 			f1_generator.power_level = 30
 			f1_generator.power_leak = true
@@ -1787,32 +1648,29 @@ function flow_2_update()
 
             pl.frame = 1
         end
-    elseif not flow_2_lightning_finished then
+    elseif not f2lf then
 
-        if flow_states[current_flow_state].frametime == 5 then
+        if f_s[cfs].ft == 5 then
             text_add("aaaaaaaaaaaggggghhhh!", false, true, true, true)
         end
 
-        if (flow_states[current_flow_state].frametime == 20) set_light_level(7)
-        if (flow_states[current_flow_state].frametime == 25) set_light_level(6)
-        if (flow_states[current_flow_state].frametime == 30) set_light_level(5)
-        if (flow_states[current_flow_state].frametime == 35) set_light_level(4)
+        if (f_s[cfs].ft == 20) sll(7)
+        if (f_s[cfs].ft == 25) sll(6)
+        if (f_s[cfs].ft == 30) sll(5)
+        if (f_s[cfs].ft == 35) sll(4)
 
-        if (flow_states[current_flow_state].frametime == 50) then
+        if (f_s[cfs].ft == 50) then
             text_add("oh just perfect_.__.__._____ of course_._._._lightning just had to go and hit our powerline didn't it.", false, true, true)
         end
 
-        if (flow_states[current_flow_state].frametime == 60) then
+        if (f_s[cfs].ft == 60) then
             text_add("well its lucky i still have generators on each floor for that home renovation.", false, true, true)
         end
 
-        if (flow_states[current_flow_state].frametime == 90) flow_2_lightning_finished = true
+        if (f_s[cfs].ft == 90) f2lf = true
     end
-
-
-    -- we're done on this stage once we've fused up the first generator
     if f1_generator.triggered then
-        flow_states[current_flow_state].stage += 1
+        f_s[cfs].stage += 1
     end
 
 end
@@ -1825,28 +1683,21 @@ end
 
 flow_3_monster_surprise_done = false
 
-function flow_3_init()
+function f3i()
     
-    -- 2nd to 1st floor
-    add_teleporter(25,19, 27,19,  31,43, false)
+    a_t(25,19, 27,19,  31,43, false)
+    a_t(30,45, 32,45,  26,17, false)
+    a_t(25,44, 27,44,  26,42, true, true, "i needed to find that battery on the floor above_._._.")
 
-    -- 1st to 2nd floor
-    add_teleporter(30,45, 32,45,  26,17, false)
-	
-    -- 1st to ground floor blocker
-    add_teleporter(25,44, 27,44,  26,42, true, true, "i needed to find that battery on the floor above_._._.")
+    firstmonster = admo(242, 327, 3)
 
-    firstmonster = add_monster_actor(242, 327, 3)
-
-    add_monster_actor(1*8, 4*8, 3)
-    add_monster_actor(37*8, 8*8, 3)
+    admo(1*8, 4*8, 3)
+    admo(37*8, 8*8, 3)
 
 end
-function flow_3_update()
-
-    -- we're done when we have the fuel
+function f3u()
     if f2_construction_fuel_cupboard.triggered then
-        flow_states[current_flow_state].stage += 1
+        f_s[cfs].stage += 1
     end
 
     if not flow_3_monster_surprise_done then
@@ -1860,182 +1711,134 @@ function flow_3_update()
 
 end
 function flow_3_exit()
-
-    -- remove ground blocking to change the text
     remove_teleporter(25,44)
 end
 
-function flow_4_init()
-    
-    -- 1st to ground floor blocker
-    add_teleporter(25,44, 27,44,  26,42, true, true, "i have the fuel, need to put it on the generators up here_._._.")
+function f4i()
+    a_t(25,44, 27,44,  26,42, true, true, "i have the fuel, need to put it on the generators up here_._._.")
 
     f1_generator.triggered = false
     f2_generator.triggered = false
 end
-function flow_4_update()
-
-    -- we're done when we have the fuel in both generators
+function f4u()
     if f1_generator.triggered and f2_generator.triggered then
-        flow_states[current_flow_state].stage += 1
+        f_s[cfs].stage += 1
     end
-
 end
 function flow_4_exit()
-    -- remove the ground blocker
     remove_teleporter(25,44)
 end
 
-function flow_5_init()
-
-    -- 1st to ground floor
-    add_teleporter(25,44, 27,44,  75,19, false)
-
-    -- ground to 1st floor
-    add_teleporter(74,21, 76,21,  26,43, false)
-	
-    -- ground to basement floor
-    add_teleporter(79,20, 81,20,  68,32, true)
-
-    -- basement to ground floor
-    add_teleporter(67,30, 69,30,  80,19, false)
+function f5i()
+    a_t(25,44, 27,44,  75,19, false)
+    a_t(74,21, 76,21,  26,43, false)
+    a_t(79,20, 81,20,  68,32, true)
+    a_t(67,30, 69,30,  80,19, false)
     
 end
-function flow_5_update()
-
+function f5u()
     if f1_library_safe.triggered then
-        flow_states[current_flow_state].stage += 1
+        f_s[cfs].stage += 1
     end
-
 end
 function flow_5_exit()
 end
-
-
-
-function flow_6_init()
-   
-   
-
+function f6i()
 end
-function flow_6_update()
-
-    -- walk into office
-    if get_pl_floor() == 0 and flow_states[current_flow_state].stage_internal == 0 then
-        local distanceToBoss = dist(pl.x,pl.y,f0_office_door.x, f0_office_door.y+8)
-        if distanceToBoss > 0 and distanceToBoss < 8 then
-            --start the end "cutscene"
-            flow_states[current_flow_state].stage_internal += 1
+function f6u()
+    if get_pl_floor() == 0 and f_s[cfs].stage_internal == 0 then
+        local distancetoboss = dist(pl.x,pl.y,f0_office_door.x, f0_office_door.y+8)
+        if distancetoboss > 0 and distancetoboss < 8 then
+            f_s[cfs].stage_internal += 1
             do_lightning_long()
 
-            flow_states[current_flow_state].frametime = 0
+            f_s[cfs].ft = 0
 
-            g_boss = add_monster_actor(57*8,25*8,3, true)
+            g_boss = admo(57*8,25*8,3, true)
 
-            fset(14, flag_collision, true)
-            fset(15, flag_collision, true)
+            fset(14, 6, true)
+            fset(15, 6, true)
         end
-    
-    -- monologue about what happened
-    elseif flow_states[current_flow_state].stage_internal == 1 then
+    elseif f_s[cfs].stage_internal == 1 then
         
-        if flow_states[current_flow_state].frametime == 10 then
+        if f_s[cfs].ft == 10 then
             text_add("b-__b-__b-__b_lood on the floor?___._._.____._._.____oh no. i remember now___ ... ___why i left___ ... ___and why i came back.", false, true, true)
 
-        elseif flow_states[current_flow_state].frametime == 20 then
+        elseif f_s[cfs].ft == 20 then
             text_add("bruno.____ my not so loving, abusive husband_._._.______ had broken a wine glass___ ... ___cursed at me to help him pick up the pieces.___ all the while insulting me_._._._", false, true, true)
 
-        elseif flow_states[current_flow_state].frametime == 30 then
+        elseif f_s[cfs].ft == 30 then
             text_add("a-_after that my vision went red_._._._________ i took some of the glass and defty put it across his throat.____ i'm not sure what came over me__.__.__.", false, true, true)
         
-        elseif flow_states[current_flow_state].frametime == 40 then
+        elseif f_s[cfs].ft == 40 then
             text_add("i left for a while after that__.__.__.______ i came back to put this to rest.", false, true, true)
         
-        elseif flow_states[current_flow_state].frametime >= 50 then
-            flow_states[current_flow_state].stage_internal += 1
+        elseif f_s[cfs].ft >= 50 then
+            f_s[cfs].stage_internal += 1
         end
-
-    -- boss time!
-    elseif flow_states[current_flow_state].stage_internal == 2 then
-
-    -- boss killed!
-    elseif flow_states[current_flow_state].stage_internal == 3 then
-        flow_states[current_flow_state].frametime = 0
-        flow_states[current_flow_state].stage_internal += 1
+    elseif f_s[cfs].stage_internal == 3 then
+        f_s[cfs].ft = 0
+        f_s[cfs].stage_internal += 1
     
-    elseif flow_states[current_flow_state].stage_internal == 4 then
-        if flow_states[current_flow_state].frametime == 15 then
+    elseif f_s[cfs].stage_internal == 4 then
+        if f_s[cfs].ft == 15 then
             text_add("finally__.__.__.__._____ i've laid him to rest.________________", false, true, true)
         end
 
-        if flow_states[current_flow_state].frametime == 20 then
+        if f_s[cfs].ft == 20 then
             text_add("made in 48 hours for the global game jam 2019. thanks for playing and completing our game! we hope you enjoyed it... izzo and jimmu, jimmu and izzo :)", true, false, true)
-            
         end
 
-        if flow_states[current_flow_state].frametime >= 25 then
+        if f_s[cfs].ft >= 25 then
             run()
         end
-
     end
 
 end
 function flow_6_exit()
-
 end
 
-function flow_7_init()
-    
-end
-function flow_7_update()
-
-end
-function flow_7_exit()
-
-end
-
-function add_flow_state(init,update,exit)
+function a_f_s(init,update,exit)
     local f = {}
 
-    f.stage = 0 -- external stage - init, update, exit
-    f.stage_internal = 0 -- for internal stage pacing
+    f.stage = 0
+    f.stage_internal = 0
 
     f.func_init = init
     f.func_update = update
     f.func_exit = exit
 
-    f.frametime = 0
+    f.ft = 0
 
-    add(flow_states, f)
+    add(f_s, f)
 end
 
 
 function init_flow()
 
     if stat(4) == "nointro" then
-        current_flow_state = 2
+        cfs = 2
     end
 
-    add_flow_state(flow_1_init, flow_1_update, flow_1_exit)
-    add_flow_state(flow_2_init, flow_2_update, flow_2_exit)
-    add_flow_state(flow_3_init, flow_3_update, flow_3_exit)
-    add_flow_state(flow_4_init, flow_4_update, flow_4_exit)
-    add_flow_state(flow_5_init, flow_5_update, flow_5_exit)
-    add_flow_state(flow_6_init, flow_6_update, flow_6_exit)
-    add_flow_state(flow_7_init, flow_7_update, flow_7_exit)
+    a_f_s(f1i, f1u, flow_1_exit)
+    a_f_s(f2i, f2u, flow_2_exit)
+    a_f_s(f3i, f3u, flow_3_exit)
+    a_f_s(f4i, f4u, flow_4_exit)
+    a_f_s(f5i, f5u, flow_5_exit)
+    a_f_s(f6i, f6u, flow_6_exit)
 
 end
 
 function update_flow()
 
-    if flow_states[current_flow_state].stage == 0 then
-        flow_states[current_flow_state].func_init()
+    if f_s[cfs].stage == 0 then
+        f_s[cfs].func_init()
         flow_init_common()
-    elseif flow_states[current_flow_state].stage == 1 then
-        flow_states[current_flow_state].func_update()
+    elseif f_s[cfs].stage == 1 then
+        f_s[cfs].func_update()
         flow_update_common()
     else
-        flow_states[current_flow_state].func_exit()
+        f_s[cfs].func_exit()
         flow_exit_common()
     end
 
@@ -2043,9 +1846,7 @@ end
 
 teleporters = {}
 
--- adds a teleporter to be looking out to teleport the player
---  min/max of the activation area, destination xy, and if facing down. in cell coords
-function add_teleporter(minx,miny,maxx,maxy, desx, desy, d, block_warp, block_text)
+function a_t(minx,miny,maxx,maxy, desx, desy, d, block_warp, block_text)
     local t = {}
 
     t.minx = minx
@@ -2081,7 +1882,7 @@ function warp_player()
     pl.frame = 1
     if(not teleporter_using.face_down) pl.dir = 4
 
-    just_teleported = true
+    jtel = true
     teleporter_using = nil
 end
 
@@ -2092,28 +1893,28 @@ function process_teleporting()
     if teleporter_using.block_warp then
         text_add(teleporter_using.block_text)
         warp_player()
-        just_teleported = false
-        pause_game_for_warp = false
+        jtel = false
+        psgfw = false
 
         return
     end
 
     if fade_screen_y >= 127 and not g_player_died then
-        for a in all(actors) do
+        for a in all(atrs) do
             a.dx = 0
             a.dy = 0
         end
 
         warp_player()
 
-        pause_game_for_warp = false
+        psgfw = false
     end
 end
 
 function draw_teleport_warp()
     if fade_screen_y <= 127 and fade_screen_y >= 0 then
         
-        if (fade_screen_frame_time < 1) fade_screen_frame_time+=1 return
+        if (fsftm < 1) fsftm+=1 return
 
         local amount_per_frame = 6
         
@@ -2124,7 +1925,7 @@ function draw_teleport_warp()
             end
         end
 
-        if (fade_screen_frame_time < 3) fade_screen_frame_time+=1 return
+        if (fsftm < 3) fsftm+=1 return
         
         if(fade_screen_y == 0) sfx(21)
 
@@ -2138,58 +1939,40 @@ function draw_teleport_warp()
         end
 
         fade_screen_x = 0
-        fade_screen_frame_time = 0
+        fsftm = 0
 
         fade_screen_y += amount_per_frame+1
     end
 end
 
 function is_cell_solid(x,y)
-    return fget(mget(x,y), flag_collision)
+    return fget(mget(x,y), 6)
 end
 
--- current position x,y, then direction x,y
 function is_map_solid(x,y,dx,dy)
-
-    -- get the remainder
     local mod_x = x % 1
     local mod_y = y % 1
 
-    -- and the absolute cell position
     local cell_x = x - mod_x
     local cell_y = y - mod_y
     
-    -- radius to the walls
-
-    -- when within a radius to a wall, add the direction to the cell check
-    --  to check the next one we would run into
     if dx != 0 and mod_x <= 0.15 then
         cell_x += dx
     end
 
-    -- like above but the y needs slightly different values
     if dy == -1 and mod_y <= 0.5 then
         cell_y += dy
     elseif dy == 1 and mod_y >= 0.75 then
         cell_y += dy
     end
 
-    -- if we're not moving, we don't need to check
     if dx != 0 or dy != 0 then
-
-        -- super hacky, surely a better way?
-        -- list through the active area entities, see if one is a door and if it's on the cell
-        --  we're checking, we've got collision
         for m in all(areas) do
             if m.show or m.linkshow then 
                 for e in all(m.entities) do
                     if e.coll and not e.triggered then
                         if e.x / 8 == cell_x and e.y / 8 == cell_y then
                             return true
-                        
-                        -- annoying issue with clipping into a right side wall and being able to still move upwards
-                        --  doing this will check for the next block over from the current if overhanging into that
-                        --  column by more than a distance of 0.3
                         elseif mod_x >= 0.15 and e.x / 8 == cell_x+1 and e.y / 8 == cell_y then
                             return true
                         end
@@ -2198,7 +1981,6 @@ function is_map_solid(x,y,dx,dy)
             end
         end
 
-        -- if the cell we're moving to is solid, cannot move
         if is_cell_solid(cell_x, cell_y) then
             return true
             
@@ -2224,15 +2006,13 @@ function text_update()
 
     if (#text_queue == 0) return
 
-    -- if we've above the character count for this line, either go to the next or delete everything
     if text_displaychar > #text_queue[1][text_displayline] then
 
         if text_displayline >= #text_queue[1] then
             
-            -- wait for button input before we unpause the game
-            g_text_waiting_on_input = (not btn(4))
+            twoi = (not btn(4))
 
-            if g_text_wait_at_end and g_text_waiting_on_input then
+            if g_text_wait_at_end and twoi then
                 return
             end
 
@@ -2247,7 +2027,7 @@ function text_update()
                 if (text_displaytimer < delay_amount) then
                     text_displaytimer+=1 
 
-                    if text_displaytimer < (delay_amount) / 2 or not g_text_waiting_on_input then
+                    if text_displaytimer < (delay_amount) / 2 or not twoi then
                         return
                     end
                 end
@@ -2274,7 +2054,6 @@ function text_update()
         end
     end
 
-    -- if a diary, then add everything straight away
     if g_text_is_diary then
         for l=1, #text_queue[1] do
             for l=1, #text_queue[1][l] do
@@ -2288,7 +2067,6 @@ function text_update()
         return
     end
 
-    -- every two frames display the next char
     if (text_displaytimer < 1) text_displaytimer += 1 return
     text_displaytimer = 1
 
@@ -2303,7 +2081,7 @@ function text_update()
     text_displaychar += 1
     text_actualchar += 1
 
-    if (not g_text_no_sound and #g_lightnings == 0) sfx(2, 0)
+    if (not g_text_no_sound and #gltg == 0) sfx(2, 0)
     
 end
 
@@ -2322,13 +2100,11 @@ function text_add(str, diary, dont_wait_at_end, add_flow_frame, mute_sound)
 
     local addtoline = function()
         
-        -- if we're over the textbox width, lets add to the lines and move on
         if #word + #line > line_limit then
             add(textlines, line)
             line = ""
         end
 
-        -- append the rest of the word before continuing
         line = line ..word
         word = ""
 
@@ -2341,15 +2117,12 @@ function text_add(str, diary, dont_wait_at_end, add_flow_frame, mute_sound)
 
         g_text_length += 1
         
-        --if we've encountered a space
         if (char == " ") addtoline()
 
     end
 
-    -- add anything left over into the text (if it's over the width)
     addtoline()
 
-    -- add the rest of the line if haven't already
     if (line != "") add(textlines, line)
 
     add(text_queue, textlines)
@@ -2365,7 +2138,7 @@ function text_add(str, diary, dont_wait_at_end, add_flow_frame, mute_sound)
 
     text_displaytimer = 0
 
-    if (add_flow_frame) flow_states[current_flow_state].frametime += 1
+    if (add_flow_frame) f_s[cfs].ft += 1
 
     pl.dx = 0
     pl.dy = 0
@@ -2433,10 +2206,9 @@ function text_draw()
 
     clip()
 
-    if g_text_waiting_on_input and g_text_wait_at_end then
+    if twoi and g_text_wait_at_end then
         text_displaytimer += 1
 
-        -- blinking text prompt display
         if(text_displaytimer >= 0 and text_displaytimer < 30) pal(6, 5)
         spr(123, box_end_x - 12, box_end_y - 10)
         pal()
@@ -2592,7 +2364,7 @@ __sfx__
 010400070361003610026100261001610016100261002610066000560005600056000560004600046000360003600036000260002600026000360003600036000360005600056000560006600066000860008604
 00050000176630e66011666146501663400000126541665416640116331763014650136431264011630106330e6300f6300e620106200f6200e6100c6100b6100961007610056100461002610006100061000610
 01040000217160001513000130001300000000025000c500100001000010000000000550010500130001300013000000000560006600000000000000000000000000000000000000000000000000000000000000
-013c00201353413521135111351113511135111351113515185341852118511185111851118511185111851517534175211751117511175111751117511175151153411521115111151111511115111151111515
+013c00201350013500135001350013500135001350013500185001850018500185001850018500185001850017500175001750017500175001750017500175001150011500115001150011500115001150011500
 013c00200705407045000000000011054100420e0420e0450c0440c0350000000000100540e0420c0420c0450b0440b03500000000000b0540904207042070450504405035000000000004054040450804408045
 00090000086100c61011620166201a6401e66025670226701e6701e6701767014660126601165010650106500e6500d6400b6400a640086300663006630066200662005610036100261002610016100161001610
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
